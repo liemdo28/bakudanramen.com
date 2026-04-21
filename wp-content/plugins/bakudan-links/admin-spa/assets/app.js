@@ -148,40 +148,47 @@ function renderShell() {
     <div id="spa-shell" class="spa-shell">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-          <span style="font-size:28px">爆</span>
+          <span style="font-size:26px;line-height:1">爆</span>
           <div>
-            <div style="font-weight:700;font-size:14px;line-height:1.2">Links Hub</div>
-            <div style="font-size:11px;color:#64748b">Marketing Admin</div>
+            <div style="font-weight:700;font-size:13px;line-height:1.3;color:#f1f5f9">Links Hub</div>
+            <div style="font-size:10px;color:#64748b;margin-top:1px">Marketing Admin</div>
           </div>
         </div>
         <nav class="sidebar-nav">
-          <a class="sidebar-link" href="#/dashboard" data-path="/dashboard">
-            ${iconDash()} Dashboard
-          </a>
-          <a class="sidebar-link" href="#/pages" data-path="/pages">
-            ${iconPages()} Pages
-          </a>
-          <a class="sidebar-link" href="#/analytics" data-path="/analytics">
-            ${iconChart()} Analytics
-          </a>
+          <a class="sidebar-link" href="#/dashboard" data-path="/dashboard">${iconDash()} Dashboard</a>
+          <a class="sidebar-link" href="#/pages"     data-path="/pages">${iconPages()} Pages & Buttons</a>
+          <a class="sidebar-link" href="#/analytics" data-path="/analytics">${iconChart()} Analytics</a>
           ${isMgr ? `<a class="sidebar-link" href="#/subscribers" data-path="/subscribers">${iconUsers()} Subscribers</a>` : ''}
-          ${isMgr ? `<a class="sidebar-link" href="#/shortlinks" data-path="/shortlinks">${iconLink()} Shortlinks</a>` : ''}
-          ${isMgr ? `<a class="sidebar-link" href="#/settings" data-path="/settings">${iconCog()} Settings</a>` : ''}
-          ${isSuper ? `<a class="sidebar-link" href="#/users" data-path="/users">${iconShield()} Users</a>` : ''}
+          ${isMgr ? `<a class="sidebar-link" href="#/shortlinks"  data-path="/shortlinks">${iconLink()} Shortlinks</a>` : ''}
+          ${isMgr ? `<a class="sidebar-link" href="#/settings"    data-path="/settings">${iconCog()} Settings</a>` : ''}
+          ${isSuper ? `<a class="sidebar-link" href="#/users"     data-path="/users">${iconShield()} Users</a>` : ''}
         </nav>
         <div class="sidebar-footer">
-          <a class="sidebar-link" href="#/profile" data-path="/profile" style="margin-bottom:4px">
-            <span style="width:20px;height:20px;border-radius:50%;background:#334155;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${(u.name||'?')[0].toUpperCase()}</span>
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.name)}</span>
+          <a class="sidebar-link" href="#/profile" data-path="/profile">
+            <span style="width:22px;height:22px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff">${(u.name||'?')[0].toUpperCase()}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${escHtml(u.name)}</span>
           </a>
-          <button class="sidebar-link" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;color:#ef4444" onclick="BKDN.logout()">
+          <button class="sidebar-link" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;color:#ef4444;font-size:13px" onclick="BKDN.logout()">
             ${iconLogout()} Sign Out
           </button>
         </div>
       </aside>
-      <main class="main-content" id="main-content">
-        <div id="view-container"></div>
-      </main>
+      <div class="shell-body">
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="topbar-title" id="topbar-title">Dashboard</div>
+          </div>
+          <div class="topbar-right">
+            <a href="${CFG.siteUrl}/links/" target="_blank" class="btn btn-ghost btn-sm" style="font-size:12px">
+              ${iconExt()} View Public Site
+            </a>
+            <span class="topbar-user">${escHtml(u.email || u.name)}</span>
+          </div>
+        </header>
+        <main class="main-content" id="main-content">
+          <div id="view-container"></div>
+        </main>
+      </div>
     </div>
   `;
 }
@@ -191,12 +198,29 @@ function setContent(html) {
   if (el) el.innerHTML = html;
 }
 
+const NAV_LABELS = {
+  '/dashboard':   'Dashboard',
+  '/pages':       'Pages & Buttons',
+  '/analytics':   'Analytics',
+  '/subscribers': 'Subscribers',
+  '/shortlinks':  'Shortlinks',
+  '/settings':    'Settings',
+  '/profile':     'My Profile',
+  '/users':       'Users',
+};
+
 function setActiveNav(path) {
   document.querySelectorAll('.sidebar-link[data-path]').forEach(a => {
     const p = a.dataset.path;
     const active = path === p || (p !== '/dashboard' && path.startsWith(p));
     a.classList.toggle('active', active);
   });
+  // Update topbar title
+  const titleEl = document.getElementById('topbar-title');
+  if (titleEl) {
+    const base = '/' + (path.split('/')[1] || 'dashboard');
+    titleEl.textContent = NAV_LABELS[base] || 'Dashboard';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -269,7 +293,18 @@ function roleLabel(role) {
 }
 
 function loading() {
-  return '<div style="padding:60px;text-align:center;color:#64748b">Loading…</div>';
+  return '<div style="padding:60px;text-align:center;color:#64748b;font-size:13px">Loading&hellip;</div>';
+}
+
+function errBanner(msg, retryFn) {
+  return `
+    <div style="margin:40px auto;max-width:520px;padding:20px 24px;background:#1e293b;border:1px solid #7f1d1d;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div>
+        <div style="color:#fca5a5;font-weight:600;margin-bottom:4px">&#9888; ${escHtml(msg)}</div>
+        <div style="color:#64748b;font-size:12px">Check your connection or try again.</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="${retryFn}">Retry</button>
+    </div>`;
 }
 
 function pageTitle(title, sub = '') {
@@ -487,52 +522,109 @@ function viewLogin() {
 async function viewDashboard() {
   setContent(loading());
 
-  const res = await GET('/admin/dashboard');
-  if (!res?.ok) {
-    setContent(`<div class="empty-state"><p style="color:#ef4444">Failed to load dashboard. <button class="btn btn-ghost btn-sm" onclick="BKDN.viewDashboard()">Retry</button></p></div>`);
+  const [statsRes, pagesRes] = await Promise.all([
+    GET('/admin/dashboard'),
+    GET('/admin/pages'),
+  ]);
+
+  if (!statsRes?.ok) {
+    setContent(`
+      <div class="alert-error" style="margin:40px auto;max-width:480px;padding:20px;background:#450a0a;border:1px solid #7f1d1d;border-radius:10px;color:#fca5a5;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">&#9888;</div>
+        <div style="font-weight:600;margin-bottom:4px">Dashboard failed to load</div>
+        <div style="font-size:13px;margin-bottom:16px;color:#f87171">Check that you are logged in and the API is reachable.</div>
+        <button class="btn btn-danger" onclick="BKDN.viewDashboard()">Retry</button>
+      </div>`);
     return;
   }
-  const d = res.data.dashboard || {};
+
+  const d     = statsRes.data.dashboard || {};
+  const pages = pagesRes?.data?.pages   || [];
 
   const statsHtml = [
-    { label:'Active Pages',      value: d.page_count    || 0,          sub:'' },
-    { label:'Views (24h)',       value: fmtNum(d.views_24h),           sub:'last 24 hours' },
-    { label:'Clicks (24h)',      value: fmtNum(d.clicks_24h),          sub:'last 24 hours' },
-    { label:'Subscribers',       value: fmtNum(d.sub_count),           sub:'' },
-    { label:'Shortlinks',        value: d.sl_count      || 0,          sub:'' },
-    { label:'Active Redirects',  value: d.active_redirs || 0,          sub:'' },
+    { label:'Active Pages',  value: d.page_count    || 0,        icon:'&#128196;' },
+    { label:'Views (24h)',   value: fmtNum(d.views_24h),         icon:'&#128065;' },
+    { label:'Clicks (24h)',  value: fmtNum(d.clicks_24h),        icon:'&#128070;' },
+    { label:'Subscribers',   value: fmtNum(d.sub_count),         icon:'&#128231;' },
+    { label:'Shortlinks',    value: d.sl_count      || 0,        icon:'&#128279;' },
   ].map(s => `
     <div class="stat-card">
+      <div class="stat-icon">${s.icon}</div>
       <div class="stat-value">${s.value}</div>
       <div class="stat-label">${escHtml(s.label)}</div>
-      ${s.sub ? `<div class="stat-sub">${escHtml(s.sub)}</div>` : ''}
     </div>
   `).join('');
 
+  // Pages management cards
+  const pageCardsHtml = pages.length ? pages.map(p => `
+    <div class="page-mgmt-card">
+      <div class="page-mgmt-info">
+        <div class="page-mgmt-title">${escHtml(p.title)}</div>
+        <div class="page-mgmt-slug">
+          <code>/links/${escHtml(p.slug)}</code>
+          <span class="badge badge-${p.is_active ? 'green' : 'gray'}" style="margin-left:6px">${p.is_active ? 'Live' : 'Draft'}</span>
+        </div>
+      </div>
+      <div class="page-mgmt-actions">
+        <a href="${escHtml(CFG.siteUrl)}/links/${escHtml(p.slug)}" target="_blank" class="btn btn-ghost btn-sm" title="View public page">${iconExt()}</a>
+        <a href="#/pages/${p.id}" class="btn btn-secondary btn-sm">Edit Buttons</a>
+      </div>
+    </div>
+  `).join('') : `
+    <div class="empty-state" style="padding:30px">
+      <p style="color:#64748b">No pages found. <a href="#/pages" style="color:#ef4444">Create one</a>.</p>
+    </div>`;
+
   const topPages = (d.top_pages || []).map(p => `
     <tr>
-      <td><a href="#/pages/${p.page_id}" style="color:#94a3b8">${escHtml(p.title||p.slug)}</a></td>
-      <td><code style="font-size:12px;color:#64748b">/${escHtml(p.slug)}</code></td>
-      <td style="text-align:right">${fmtNum(p.views)}</td>
+      <td><a href="#/pages/${p.page_id}" style="color:#94a3b8;font-weight:500">${escHtml(p.title||p.slug)}</a></td>
+      <td><code>/links/${escHtml(p.slug)}</code></td>
+      <td style="text-align:right;font-weight:600">${fmtNum(p.views)}</td>
     </tr>
-  `).join('') || '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">No data yet — visit your public pages to generate traffic.</td></tr>';
+  `).join('') || `<tr><td colspan="3" style="text-align:center;color:#475569;padding:24px;font-size:13px">No traffic yet — share your QR codes to start collecting data.</td></tr>`;
 
   setContent(`
-    ${pageTitle('Dashboard', 'Welcome back, ' + (state.user?.name || ''))}
+    <div class="dash-welcome">
+      <div>
+        <h1 class="dash-title">Good ${greeting()}, ${escHtml((state.user?.name||'').split(' ')[0] || 'Admin')}.</h1>
+        <p class="dash-sub">Here's your Links Hub at a glance.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="#/pages" class="btn btn-secondary btn-sm">${iconPages()} All Pages</a>
+        <a href="${escHtml(CFG.siteUrl)}/links/" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} Public Site</a>
+      </div>
+    </div>
+
     <div class="stats-grid">${statsHtml}</div>
-    <div class="card" style="margin-top:24px">
+
+    <div class="card" style="margin-top:28px">
       <div class="card-header">
-        <h3 class="card-title">Top Pages (7 days)</h3>
-        <a href="#/analytics" class="btn btn-sm btn-ghost">View All Analytics</a>
+        <h3 class="card-title">Store Pages</h3>
+        <a href="#/pages" class="btn btn-ghost btn-sm">Manage All</a>
+      </div>
+      <div class="page-mgmt-list">${pageCardsHtml}</div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-header">
+        <h3 class="card-title">Top Pages <span style="color:#64748b;font-size:12px;font-weight:400">(last 7 days)</span></h3>
+        <a href="#/analytics" class="btn btn-ghost btn-sm">Full Analytics</a>
       </div>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Title</th><th>Slug</th><th style="text-align:right">Views</th></tr></thead>
+          <thead><tr><th>Page</th><th>Slug</th><th style="text-align:right">Views</th></tr></thead>
           <tbody>${topPages}</tbody>
         </table>
       </div>
     </div>
   `);
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -541,7 +633,10 @@ async function viewDashboard() {
 async function viewPages() {
   setContent(loading());
   const res = await GET('/admin/pages');
-  if (!res) return;
+  if (!res?.ok) {
+    setContent(errBanner('Failed to load pages.', 'BKDN.viewPages()'));
+    return;
+  }
   const pages = res.data.pages || [];
 
   const isMgr = can(['super_admin','marketing_manager']);
@@ -1436,7 +1531,8 @@ function renderPageAnalyticsCards(d) {
 async function viewSubscribers() {
   setContent(loading());
   const res = await GET('/admin/subscribers');
-  const subs = res?.data?.subscribers || [];
+  if (!res?.ok) { setContent(errBanner('Failed to load subscribers.', 'BKDN.viewSubscribers()')); return; }
+  const subs = res?.data?.rows || [];
 
   const rows = subs.map(s => `
     <tr>
@@ -1471,6 +1567,7 @@ async function viewSubscribers() {
 async function viewShortlinks() {
   setContent(loading());
   const res = await GET('/admin/shortlinks');
+  if (!res?.ok) { setContent(errBanner('Failed to load shortlinks.', 'BKDN.viewShortlinks()')); return; }
   const links = res?.data?.shortlinks || [];
 
   const rows = links.map(l => `
@@ -1619,6 +1716,7 @@ function loadQRLib(cb) {
 async function viewSettings() {
   setContent(loading());
   const res = await GET('/admin/settings');
+  if (!res?.ok) { setContent(errBanner('Failed to load settings.', 'BKDN.viewSettings()')); return; }
   const opts = res?.data?.settings || {};
 
   setContent(`
@@ -1909,6 +2007,8 @@ window.BKDN = {
   closeModal,
   // Dashboard
   viewDashboard,
+  // Views (needed for retry buttons)
+  viewPages, viewSubscribers, viewShortlinks, viewSettings,
   // Pages
   openCreatePage, createPage, duplicatePage, deletePage,
   // Page editor
