@@ -8,6 +8,27 @@ function bkdn_render_page(array $page): string {
     $theme   = $page['theme'] ?? bkdn_default_theme();
     $buttons = $page['buttons'] ?? [];
 
+    // Guarantee Instagram + Facebook always appear if options have URLs
+    // (covers case where DB buttons are missing or were never seeded)
+    $icon_keys_present = array_column($buttons, 'icon_key');
+    if (!in_array('instagram', $icon_keys_present) && !empty($opt['instagram_url'])) {
+        $buttons[] = [
+            'id' => 0, 'title' => 'Instagram', 'subtitle' => '@bakudanramen',
+            'icon_key' => 'instagram', 'url' => $opt['instagram_url'],
+            'style_variant' => 'secondary', 'sort_order' => 50,
+            'enabled' => 1, 'is_active' => 1, 'opens_in_new_tab' => 1,
+        ];
+    }
+    if (!in_array('facebook', $icon_keys_present) && !empty($opt['facebook_url'])) {
+        $buttons[] = [
+            'id' => 0, 'title' => 'Facebook', 'subtitle' => 'Bakudan Ramen',
+            'icon_key' => 'facebook', 'url' => $opt['facebook_url'],
+            'style_variant' => 'secondary', 'sort_order' => 60,
+            'enabled' => 1, 'is_active' => 1, 'opens_in_new_tab' => 1,
+        ];
+    }
+    usort($buttons, fn($a, $b) => (int)($a['sort_order'] ?? 0) <=> (int)($b['sort_order'] ?? 0));
+
     // Partition — is_active=0 already excluded by SQL.
     // enabled=0 on primary/order_sub = skip entirely.
     // enabled=0 on link rows = render as visible-disabled (greyed out).
