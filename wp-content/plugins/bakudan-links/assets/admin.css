@@ -1,0 +1,52 @@
+.bkdn-wrap { max-width: 1200px; }
+
+/* Sub-nav */
+.bkdn-subnav { margin: 12px 0 20px; padding: 10px 0; border-bottom: 1px solid #ddd; }
+.bkdn-subnav a { margin-right: 16px; color: #666; text-decoration: none; font-size: 13px; }
+.bkdn-subnav a.current,
+.bkdn-subnav a:hover { color: #2271b1; border-bottom: 2px solid #2271b1; padding-bottom: 4px; }
+
+/* Stats row */
+.bkdn-stats-row { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.bkdn-stat {
+  background: #fff; border: 1px solid #ddd; border-radius: 8px;
+  padding: 16px 24px; min-width: 140px; text-align: center;
+}
+.bkdn-stat span { display: block; font-size: 28px; font-weight: 700; color: #2271b1; margin-bottom: 4px; }
+.bkdn-stat { color: #666; font-size: 13px; }
+
+/* Side panel */
+.bkdn-panel {
+  background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px;
+  padding: 20px; align-self: start;
+}
+.bkdn-panel h3 { margin-top: 0; }
+.bkdn-panel p { margin: 0 0 10px; }
+.bkdn-panel label { font-size: 13px; font-weight: 600; }
+
+/* Button table */
+.bkdn-btn-table td { vertical-align: middle; }
+
+/* Badges */
+.bkdn-badge-feat {
+  display: inline-block; background: #f0ab00; color: #fff;
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+}
+.bkdn-badge-rev {
+  display: inline-block; background: #46b450; color: #fff;
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+}
+
+/* Status badge */
+.bkdn-status-pending  { color: #f0ab00; }
+.bkdn-status-synced   { color: #46b450; }
+.bkdn-status-failed   { color: #dc3232; }
+
+/* Forms */
+.bkdn-form .form-table th { width: 180px; }
+
+/* Responsive */
+@media (max-width: 782px) {
+  .bkdn-stats-row { flex-direction: column; }
+  .bkdn-panel { margin-top: 16px; }
+}
