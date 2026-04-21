@@ -525,13 +525,15 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .btn-row:hover       { border-color: #475569; }
 .btn-row.dragging    { opacity: .45; border-color: #ef4444; }
 .btn-row.drag-over   { border-color: #ef4444; background: #1a0d0d; }
-.btn-row--disabled   { opacity: .5; }
+.btn-row--disabled   { opacity: .55; }
+.btn-row--hidden     { opacity: .4; border-style: dashed; }
 .btn-row-drag  { color: #475569; cursor: grab; flex-shrink: 0; display: flex; }
 .btn-row-body  { flex: 1; min-width: 0; }
 .btn-row-title { font-size: 13.5px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn-row-meta  { display: flex; gap: 5px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
 .btn-row-url   { flex: 1; min-width: 0; font-size: 11px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
 .btn-row-toggle  { flex-shrink: 0; }
+.btn-row-toggles { flex-shrink: 0; }
 .btn-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
 /* ─── Responsive ───────────────────────────────────────────────────── */

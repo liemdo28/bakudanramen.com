@@ -903,25 +903,55 @@ function renderButtonList() {
     return;
   }
 
-  el.innerHTML = state.currentButtons.map((b, i) => `
-    <div class="btn-row ${b.enabled?'':'btn-row--disabled'}" draggable="${canEdit}" data-id="${b.id}" data-idx="${i}">
+  el.innerHTML = state.currentButtons.map((b, i) => {
+    const visible  = !!b.is_active;
+    const enabled  = !!b.enabled;
+    const featured = !!b.is_featured;
+
+    // Status badge
+    let statusClass = 'badge-green', statusLabel = 'Active';
+    if (!visible)       { statusClass = 'badge-gray';   statusLabel = 'Hidden'; }
+    else if (!enabled)  { statusClass = 'badge-yellow'; statusLabel = 'Disabled'; }
+    else if (featured)  { statusClass = 'badge-blue';   statusLabel = 'Featured'; }
+
+    // Scheduled?
+    const now = new Date();
+    const startAt = b.start_at ? new Date(b.start_at) : null;
+    const endAt   = b.end_at   ? new Date(b.end_at)   : null;
+    const isScheduled = (startAt && now < startAt) || (endAt && now > endAt);
+    if (isScheduled && visible) { statusClass = 'badge-yellow'; statusLabel = 'Scheduled'; }
+
+    return `
+    <div class="btn-row ${!visible?'btn-row--hidden':''} ${visible&&!enabled?'btn-row--disabled':''}" draggable="${canEdit}" data-id="${b.id}" data-idx="${i}">
       <div class="btn-row-drag" title="Drag to reorder">${iconDrag()}</div>
       <div class="btn-row-body">
-        <div class="btn-row-title">${escHtml(b.title)}</div>
+        <div class="btn-row-title">
+          ${featured ? '<span style="color:#fbbf24;margin-right:4px" title="Featured">&#9733;</span>' : ''}
+          ${escHtml(b.title)}
+        </div>
         <div class="btn-row-meta">
+          <span class="badge ${statusClass}" style="font-size:10px">${statusLabel}</span>
           ${b.icon_key ? `<span class="badge badge-gray" style="font-size:10px">${escHtml(b.icon_key)}</span>` : ''}
-          <span class="badge badge-${b.style_variant==='primary'?'blue':'gray'}" style="font-size:10px">${escHtml(b.style_variant)}</span>
-          ${b.subtitle ? `<span style="color:#64748b;font-size:11px">${escHtml(b.subtitle)}</span>` : ''}
+          <span class="badge badge-gray" style="font-size:10px">${escHtml(b.style_variant||'secondary')}</span>
+          ${b.start_at||b.end_at ? `<span style="color:#64748b;font-size:10px" title="${escHtml(b.start_at||'')} - ${escHtml(b.end_at||'')}">&#128197; scheduled</span>` : ''}
         </div>
       </div>
       <div class="btn-row-url" title="${escHtml(b.url||'')}">
-        ${b.url ? `<a href="${escHtml(b.url)}" target="_blank" style="color:#64748b;font-size:11px">${escHtml((b.url||'').substring(0,40)+(b.url&&b.url.length>40?'…':''))}</a>` : '<span style="color:#475569;font-size:11px">no url</span>'}
+        ${b.url ? `<a href="${escHtml(b.url)}" target="_blank" style="color:#64748b;font-size:11px">${escHtml((b.url||'').substring(0,40)+(b.url&&b.url.length>40?'...':''))}</a>` : '<span style="color:#475569;font-size:11px">no url</span>'}
       </div>
-      <div class="btn-row-toggle">
-        <label class="toggle">
-          <input type="checkbox" ${b.enabled?'checked':''} onchange="BKDN.toggleButton(${b.id}, this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+      <div class="btn-row-toggles" style="display:flex;gap:12px;align-items:center;flex-shrink:0">
+        <div style="text-align:center">
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Visible</div>
+          <label class="toggle"><input type="checkbox" ${visible?'checked':''} onchange="BKDN.toggleVisible(${b.id},this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Enabled</div>
+          <label class="toggle"><input type="checkbox" ${enabled?'checked':''} onchange="BKDN.toggleButton(${b.id},this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Featured</div>
+          <label class="toggle"><input type="checkbox" ${featured?'checked':''} onchange="BKDN.toggleFeatured(${b.id},this.checked)"><span class="toggle-slider"></span></label>
+        </div>
       </div>
       ${canEdit ? `
       <div class="btn-row-actions">
@@ -930,7 +960,8 @@ function renderButtonList() {
         <button class="btn btn-sm btn-danger" onclick="BKDN.deleteButton(${b.id})" title="Delete">${iconTrash()}</button>
       </div>` : ''}
     </div>
-  `).join('');
+    `;
+  }).join('');
 
   if (canEdit) initDragDrop();
 }
@@ -996,15 +1027,43 @@ function initDragDrop() {
   });
 }
 
-/* ── Toggle button enabled ────────────────────────────────────────── */
+/* ── Toggle helpers ──────────────────────────────────────────────── */
+async function toggleVisible(id, visible) {
+  const b = state.currentButtons.find(x => x.id === id);
+  if (!b) return;
+  const res = await PUT('/admin/buttons/' + id, { ...b, is_active: visible ? 1 : 0 });
+  if (res?.ok) {
+    b.is_active = visible ? 1 : 0;
+    renderButtonList();
+  } else {
+    toast('Failed to update visibility.', 'error');
+    renderButtonList();
+  }
+}
+
 async function toggleButton(id, enabled) {
   const b = state.currentButtons.find(x => x.id === id);
   if (!b) return;
   const res = await PUT('/admin/buttons/' + id, { ...b, enabled: enabled ? 1 : 0 });
   if (res?.ok) {
     b.enabled = enabled ? 1 : 0;
+    renderButtonList();
   } else {
     toast('Failed to toggle button.', 'error');
+    renderButtonList();
+  }
+}
+
+async function toggleFeatured(id, featured) {
+  const b = state.currentButtons.find(x => x.id === id);
+  if (!b) return;
+  const res = await PUT('/admin/buttons/' + id, { ...b, is_featured: featured ? 1 : 0 });
+  if (res?.ok) {
+    b.is_featured = featured ? 1 : 0;
+    renderButtonList();
+  } else {
+    toast('Failed to update featured status.', 'error');
+    renderButtonList();
   }
 }
 
@@ -1051,12 +1110,20 @@ function buttonForm(b = {}) {
         <input id="bf-end" type="datetime-local" class="form-control" value="${escHtml((b.end_at||'').replace(' ','T').slice(0,16))}">
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <label class="toggle"><input id="bf-visible" type="checkbox" ${b.is_active!==0?'checked':''}><span class="toggle-slider"></span></label>
+        <span class="form-label" style="margin:0">Visible (show on page)</span>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <label class="toggle"><input id="bf-enabled" type="checkbox" ${b.enabled!==0?'checked':''}><span class="toggle-slider"></span></label>
+        <span class="form-label" style="margin:0">Enabled (clickable)</span>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
         <label class="toggle"><input id="bf-new-tab" type="checkbox" ${b.opens_in_new_tab!==0?'checked':''}><span class="toggle-slider"></span></label>
         <span class="form-label" style="margin:0">Open in new tab</span>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
         <label class="toggle"><input id="bf-featured" type="checkbox" ${b.is_featured?'checked':''}><span class="toggle-slider"></span></label>
-        <span class="form-label" style="margin:0">Featured</span>
+        <span class="form-label" style="margin:0">Featured (highlight)</span>
       </div>
     </div>
   `;
@@ -1064,20 +1131,22 @@ function buttonForm(b = {}) {
 
 function getButtonFormValues() {
   return {
-    title:           document.getElementById('bf-title').value.trim(),
-    subtitle:        document.getElementById('bf-subtitle').value.trim() || null,
-    url:             document.getElementById('bf-url').value.trim(),
-    icon_key:        document.getElementById('bf-icon').value || null,
-    style_variant:   document.getElementById('bf-style').value,
-    start_at:        document.getElementById('bf-start').value.replace('T',' ') || null,
-    end_at:          document.getElementById('bf-end').value.replace('T',' ')   || null,
-    opens_in_new_tab: document.getElementById('bf-new-tab').checked ? 1 : 0,
-    is_featured:     document.getElementById('bf-featured').checked ? 1 : 0,
+    title:            document.getElementById('bf-title').value.trim(),
+    subtitle:         document.getElementById('bf-subtitle').value.trim() || null,
+    url:              document.getElementById('bf-url').value.trim(),
+    icon_key:         document.getElementById('bf-icon').value || null,
+    style_variant:    document.getElementById('bf-style').value,
+    start_at:         document.getElementById('bf-start').value.replace('T',' ') || null,
+    end_at:           document.getElementById('bf-end').value.replace('T',' ')   || null,
+    is_active:        document.getElementById('bf-visible').checked  ? 1 : 0,
+    enabled:          document.getElementById('bf-enabled').checked  ? 1 : 0,
+    opens_in_new_tab: document.getElementById('bf-new-tab').checked  ? 1 : 0,
+    is_featured:      document.getElementById('bf-featured').checked ? 1 : 0,
   };
 }
 
 function openAddButton() {
-  openModal('Add Button', buttonForm(), `
+  openModal('Add Button', buttonForm({ is_active: 1, enabled: 1, opens_in_new_tab: 1 }), `
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="BKDN.addButton()">Add Button</button>
   `);
@@ -1845,7 +1914,7 @@ window.BKDN = {
   // Page editor
   savePage, saveTheme, resetTheme, togglePageActive, switchTab,
   // Buttons
-  openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton,
+  openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton, toggleVisible, toggleFeatured,
   // Redirects
   openAddRedirect, addRedirect, deleteRedirect,
   // Analytics
