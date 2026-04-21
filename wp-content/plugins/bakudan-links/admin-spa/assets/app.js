@@ -488,43 +488,46 @@ async function viewDashboard() {
   setContent(loading());
 
   const res = await GET('/admin/dashboard');
-  if (!res) return;
-  const d = res.data.data || {};
+  if (!res?.ok) {
+    setContent(`<div class="empty-state"><p style="color:#ef4444">Failed to load dashboard. <button class="btn btn-ghost btn-sm" onclick="BKDN.viewDashboard()">Retry</button></p></div>`);
+    return;
+  }
+  const d = res.data.dashboard || {};
 
   const statsHtml = [
-    { label:'Total Pages',      value: d.pages_total   || 0 },
-    { label:'Active Pages',     value: d.pages_active  || 0 },
-    { label:'Views (30 days)',  value: fmtNum(d.views_30d) },
-    { label:'Clicks (30 days)', value: fmtNum(d.clicks_30d) },
-    { label:'Subscribers',      value: fmtNum(d.subscribers) },
-    { label:'Shortlinks',       value: d.shortlinks    || 0 },
+    { label:'Active Pages',      value: d.page_count    || 0,          sub:'' },
+    { label:'Views (24h)',       value: fmtNum(d.views_24h),           sub:'last 24 hours' },
+    { label:'Clicks (24h)',      value: fmtNum(d.clicks_24h),          sub:'last 24 hours' },
+    { label:'Subscribers',       value: fmtNum(d.sub_count),           sub:'' },
+    { label:'Shortlinks',        value: d.sl_count      || 0,          sub:'' },
+    { label:'Active Redirects',  value: d.active_redirs || 0,          sub:'' },
   ].map(s => `
     <div class="stat-card">
       <div class="stat-value">${s.value}</div>
       <div class="stat-label">${escHtml(s.label)}</div>
+      ${s.sub ? `<div class="stat-sub">${escHtml(s.sub)}</div>` : ''}
     </div>
   `).join('');
 
   const topPages = (d.top_pages || []).map(p => `
     <tr>
-      <td><a href="#/pages/${p.id}" style="color:#94a3b8">${escHtml(p.title)}</a></td>
+      <td><a href="#/pages/${p.page_id}" style="color:#94a3b8">${escHtml(p.title||p.slug)}</a></td>
       <td><code style="font-size:12px;color:#64748b">/${escHtml(p.slug)}</code></td>
       <td style="text-align:right">${fmtNum(p.views)}</td>
-      <td style="text-align:right">${fmtNum(p.clicks)}</td>
     </tr>
-  `).join('') || '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">No data yet</td></tr>';
+  `).join('') || '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">No data yet — visit your public pages to generate traffic.</td></tr>';
 
   setContent(`
     ${pageTitle('Dashboard', 'Welcome back, ' + (state.user?.name || ''))}
     <div class="stats-grid">${statsHtml}</div>
     <div class="card" style="margin-top:24px">
       <div class="card-header">
-        <h3 class="card-title">Top Pages (30 days)</h3>
+        <h3 class="card-title">Top Pages (7 days)</h3>
         <a href="#/analytics" class="btn btn-sm btn-ghost">View All Analytics</a>
       </div>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Title</th><th>Slug</th><th style="text-align:right">Views</th><th style="text-align:right">Clicks</th></tr></thead>
+          <thead><tr><th>Title</th><th>Slug</th><th style="text-align:right">Views</th></tr></thead>
           <tbody>${topPages}</tbody>
         </table>
       </div>
@@ -1156,10 +1159,10 @@ async function loadPageAnalytics() {
   el.dataset.loaded = '1';
 
   const p = state.currentPage;
-  const res = await GET('/admin/pages/' + p.id + '/analytics');
+  const res = await GET('/admin/pages/' + p.id + '/analytics?period=7d');
   if (!res?.ok) { el.innerHTML = '<p style="color:#64748b;padding:20px">No analytics data.</p>'; return; }
-  const d = res.data.data || {};
-  el.innerHTML = renderAnalyticsCards(d);
+  const d = res.data.analytics || {};
+  el.innerHTML = renderPageAnalyticsCards(d);
 }
 
 /* ── Page Redirects tab ──────────────────────────────────────────── */
@@ -1270,66 +1273,89 @@ async function deleteRedirect(id, pageId) {
 async function viewAnalytics() {
   setContent(`
     ${pageTitle('Analytics', 'Traffic overview for all pages')}
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-      <select id="an-period" class="form-control" style="width:auto" onchange="BKDN.loadAnalytics()">
-        <option value="7">Last 7 days</option>
-        <option value="30" selected>Last 30 days</option>
-        <option value="90">Last 90 days</option>
-      </select>
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="period-btn active" data-period="7d" onclick="BKDN.selectPeriod(this,'7d')">7 days</button>
+      <button class="period-btn" data-period="30d" onclick="BKDN.selectPeriod(this,'30d')">30 days</button>
+      <button class="period-btn" data-period="1d" onclick="BKDN.selectPeriod(this,'1d')">Today</button>
     </div>
     <div id="analytics-body">${loading()}</div>
   `);
-  await loadAnalytics();
+  await loadAnalytics('7d');
 }
 
-async function loadAnalytics() {
+function selectPeriod(btn, period) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadAnalytics(period);
+}
+
+async function loadAnalytics(period) {
+  period = period || '7d';
   const el = document.getElementById('analytics-body');
   if (!el) return;
-  const days = document.getElementById('an-period')?.value || 30;
-  const res = await GET('/admin/analytics?days=' + days);
-  if (!res?.ok) { el.innerHTML = '<p style="color:#64748b">Failed to load analytics.</p>'; return; }
-  const d = res.data.data || {};
-  el.innerHTML = renderAnalyticsCards(d, true);
+  el.innerHTML = loading();
+  const res = await GET('/admin/analytics?period=' + period);
+  if (!res?.ok) {
+    el.innerHTML = '<p style="color:#64748b;padding:20px">Failed to load analytics. <button class="btn btn-ghost btn-sm" onclick="BKDN.loadAnalytics(\'' + period + '\')">Retry</button></p>';
+    return;
+  }
+  const d = res.data.analytics || {};
+  el.innerHTML = renderGlobalAnalytics(d, period);
 }
 
-function renderAnalyticsCards(d, showTopPages = false) {
+function renderGlobalAnalytics(d, period) {
   const statsHtml = [
-    { label:'Views',    value: fmtNum(d.views) },
-    { label:'Clicks',   value: fmtNum(d.clicks) },
-    { label:'CTR',      value: d.ctr != null ? (parseFloat(d.ctr).toFixed(1) + '%') : '—' },
-    { label:'Mobile',   value: d.device_mobile  ? fmtNum(d.device_mobile)  : '—' },
-    { label:'Desktop',  value: d.device_desktop ? fmtNum(d.device_desktop) : '—' },
+    { label:'Total Views',   value: fmtNum(d.total_views) },
+    { label:'Total Clicks',  value: fmtNum(d.total_clicks) },
   ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
 
-  const topButtonsHtml = (d.top_buttons||[]).map(b =>
-    `<tr><td>${escHtml(b.title)}</td><td style="text-align:right">${fmtNum(b.clicks)}</td></tr>`
-  ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No data</td></tr>';
-
-  const topPagesHtml = showTopPages && (d.top_pages||[]).map(p =>
-    `<tr><td><a href="#/pages/${p.id}" style="color:#94a3b8">${escHtml(p.title||p.slug)}</a></td><td style="text-align:right">${fmtNum(p.views)}</td><td style="text-align:right">${fmtNum(p.clicks)}</td></tr>`
-  ).join('');
+  const topPagesHtml = (d.top_pages||[]).map(p =>
+    `<tr><td><a href="#/pages/${p.page_id}" style="color:#94a3b8">${escHtml(p.title||p.slug)}</a></td><td style="text-align:right">${fmtNum(p.views)}</td></tr>`
+  ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No data yet</td></tr>';
 
   return `
     <div class="stats-grid">${statsHtml}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:24px">
-      ${showTopPages && topPagesHtml ? `
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">Top Pages</h3></div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>Page</th><th style="text-align:right">Views</th><th style="text-align:right">Clicks</th></tr></thead>
-            <tbody>${topPagesHtml}</tbody>
-          </table>
-        </div>
-      </div>` : ''}
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">Top Buttons</h3></div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>Button</th><th style="text-align:right">Clicks</th></tr></thead>
-            <tbody>${topButtonsHtml}</tbody>
-          </table>
-        </div>
+    <div class="card" style="margin-top:24px">
+      <div class="card-header"><h3 class="card-title">Top Pages</h3></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Page</th><th style="text-align:right">Views</th></tr></thead>
+          <tbody>${topPagesHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderPageAnalyticsCards(d) {
+  const views  = fmtNum(d.views  || 0);
+  const clicks = fmtNum(d.clicks || 0);
+  const ctr = (d.views && d.clicks) ? ((d.clicks / d.views) * 100).toFixed(1) + '%' : '—';
+
+  const deviceMap = {};
+  (d.devices||[]).forEach(row => { deviceMap[row.device_type] = parseInt(row.cnt||0); });
+
+  const statsHtml = [
+    { label:'Views',   value: views },
+    { label:'Clicks',  value: clicks },
+    { label:'CTR',     value: ctr },
+    { label:'Mobile',  value: fmtNum(deviceMap.mobile  || 0) },
+    { label:'Desktop', value: fmtNum(deviceMap.desktop || 0) },
+  ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
+
+  const topButtonsHtml = (d.top_buttons||[]).map(b =>
+    `<tr><td>${escHtml(b.title||'(untitled)')}</td><td style="text-align:right">${fmtNum(b.clicks)}</td></tr>`
+  ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No clicks recorded yet</td></tr>';
+
+  return `
+    <div class="stats-grid">${statsHtml}</div>
+    <div class="card" style="margin-top:24px">
+      <div class="card-header"><h3 class="card-title">Top Buttons</h3></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Button</th><th style="text-align:right">Clicks</th></tr></thead>
+          <tbody>${topButtonsHtml}</tbody>
+        </table>
       </div>
     </div>
   `;
@@ -1561,9 +1587,9 @@ async function viewSettings() {
       <div style="padding:20px">
         <div style="display:flex;flex-direction:column;gap:16px">
           ${[
-            { key:'show_email_club',  label:'Show Email Club section' },
-            { key:'show_events',      label:'Show Events section' },
-            { key:'show_coming_soon', label:'Show Coming Soon items' },
+            { key:'email_club_enabled',  label:'Show Email Club section' },
+            { key:'events_enabled',      label:'Show Events section' },
+            { key:'signup_form_enabled', label:'Show Email Signup Form' },
           ].map(o => `
             <div style="display:flex;align-items:center;gap:12px">
               <label class="toggle">
@@ -1584,16 +1610,16 @@ async function viewSettings() {
 
 async function saveSettings() {
   const settings = {
-    order_rim:       document.getElementById('s-order-rim').value.trim(),
-    order_stone_oak: document.getElementById('s-order-stone_oak').value.trim(),
-    order_bandera:   document.getElementById('s-order-bandera').value.trim(),
-    instagram_url:   document.getElementById('s-ig').value.trim(),
-    facebook_url:    document.getElementById('s-fb').value.trim(),
-    show_email_club:  document.getElementById('s-show_email_club').checked  ? 1 : 0,
-    show_events:      document.getElementById('s-show_events').checked       ? 1 : 0,
-    show_coming_soon: document.getElementById('s-show_coming_soon').checked  ? 1 : 0,
+    order_rim:           document.getElementById('s-order-rim')?.value.trim()       || '',
+    order_stone_oak:     document.getElementById('s-order-stone_oak')?.value.trim() || '',
+    order_bandera:       document.getElementById('s-order-bandera')?.value.trim()   || '',
+    instagram_url:       document.getElementById('s-ig')?.value.trim()              || '',
+    facebook_url:        document.getElementById('s-fb')?.value.trim()              || '',
+    email_club_enabled:  document.getElementById('s-email_club_enabled')?.checked   ? 1 : 0,
+    events_enabled:      document.getElementById('s-events_enabled')?.checked        ? 1 : 0,
+    signup_form_enabled: document.getElementById('s-signup_form_enabled')?.checked  ? 1 : 0,
   };
-  const res = await POST('/admin/settings', settings);
+  const res = await PUT('/admin/settings', settings);
   if (res?.ok) toast('Settings saved!');
   else toast('Failed to save settings.', 'error');
 }
@@ -1662,7 +1688,20 @@ async function changePassword() {
 async function viewUsers() {
   if (!can(['super_admin'])) { navigate('/dashboard'); return; }
   setContent(loading());
-  const res = await GET('/admin/users');
+  const res = await GET('/admin/users').catch(() => null);
+  if (!res?.ok) {
+    setContent(`
+      ${pageTitle('User Management', 'Admin access control')}
+      <div class="card">
+        <div class="empty-state">
+          <div class="empty-icon">🔒</div>
+          <h3>User management coming soon</h3>
+          <p>Manage users directly in the WordPress admin or via the database.</p>
+        </div>
+      </div>
+    `);
+    return;
+  }
   const users = res?.data?.users || [];
 
   const rows = users.map(u => `
@@ -1800,6 +1839,7 @@ window.BKDN = {
   logout,
   closeModal,
   // Dashboard
+  viewDashboard,
   // Pages
   openCreatePage, createPage, duplicatePage, deletePage,
   // Page editor
@@ -1809,7 +1849,7 @@ window.BKDN = {
   // Redirects
   openAddRedirect, addRedirect, deleteRedirect,
   // Analytics
-  loadAnalytics,
+  loadAnalytics, selectPeriod,
   // Shortlinks
   openAddShortlink, createShortlink, deleteShortlink, showQR, downloadQR,
   // Settings
