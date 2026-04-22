@@ -91,6 +91,7 @@ const routes = [
   { pattern: /^\/settings$/,           view: viewSettings },
   { pattern: /^\/profile$/,            view: viewProfile },
   { pattern: /^\/users$/,              view: viewUsers },
+  { pattern: /^\/scheduling$/,         view: viewScheduling },
 ];
 
 function getHash() {
@@ -165,6 +166,7 @@ function renderShell() {
           ${isMgr ? `<a class="sidebar-link" href="#/shortlinks"  data-path="/shortlinks">${iconLink()} Shortlinks</a>` : ''}
           ${isMgr ? `<a class="sidebar-link" href="#/settings"    data-path="/settings">${iconCog()} Settings</a>` : ''}
           ${isSuper ? `<a class="sidebar-link" href="#/users"     data-path="/users">${iconShield()} Users</a>` : ''}
+          <a class="sidebar-link" href="#/scheduling" data-path="/scheduling">${iconCalendar()} Scheduling</a>
         </nav>
         <div class="sidebar-footer">
           <a class="sidebar-link" href="#/profile" data-path="/profile">
@@ -174,6 +176,10 @@ function renderShell() {
           <button class="sidebar-link" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;color:#ef4444;font-size:13px" onclick="BKDN.logout()">
             ${iconLogout()} Sign Out
           </button>
+        </div>
+        <div class="sidebar-version">
+          <strong>v${escHtml(CFG.version||'—')}</strong>
+          ${CFG.project?.deployed_at ? `<br>Deployed ${new Date(CFG.project.deployed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : ''}
         </div>
       </aside>
       <div class="shell-body">
@@ -211,6 +217,7 @@ const NAV_LABELS = {
   '/settings':    'Settings',
   '/profile':     'My Profile',
   '/users':       'Users',
+  '/scheduling':  'Scheduling',
 };
 
 function setActiveNav(path) {
@@ -339,6 +346,10 @@ const iconExt   = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="n
 const iconDrag  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
 const iconQR      = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="16" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>`;
 const iconProject = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+const iconCalendar = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const iconSync     = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+const iconWarning  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+const iconPublish  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
 
 /* ═══════════════════════════════════════════════════════════════════
    VIEW: LOGIN
@@ -741,19 +752,67 @@ async function viewDashboard() {
   const d     = statsRes.data.dashboard || {};
   const pages = pagesRes?.data?.pages   || [];
 
-  const statsHtml = [
-    { label:'Active Pages',  value: d.page_count    || 0,        icon:'&#128196;' },
-    { label:'Views (24h)',   value: fmtNum(d.views_24h),         icon:'&#128065;' },
-    { label:'Clicks (24h)',  value: fmtNum(d.clicks_24h),        icon:'&#128070;' },
-    { label:'Subscribers',   value: fmtNum(d.sub_count),         icon:'&#128231;' },
-    { label:'Shortlinks',    value: d.sl_count      || 0,        icon:'&#128279;' },
-  ].map(s => `
-    <div class="stat-card">
-      <div class="stat-icon">${s.icon}</div>
-      <div class="stat-value">${s.value}</div>
-      <div class="stat-label">${escHtml(s.label)}</div>
+  // Compute enhanced KPIs from pages list
+  const now = new Date();
+  let liveCnt = 0, hiddenCnt = 0, schedCnt = 0, expiredCnt = 0, featuredCnt = 0;
+  pages.forEach(p => {
+    if (!p.is_active) { hiddenCnt++; return; }
+    if (p.expires_at && new Date(p.expires_at) < now) { expiredCnt++; return; }
+    if (p.published_at && new Date(p.published_at) > now) { schedCnt++; return; }
+    liveCnt++;
+  });
+
+  const kpiHtml = [
+    { label:'Total Pages',  value: pages.length,         cls:'',        icon:'&#128196;' },
+    { label:'Live',         value: liveCnt,               cls:'kpi--live',  icon:'&#9679;' },
+    { label:'Hidden',       value: hiddenCnt,             cls:'kpi--hidden',icon:'&#9673;' },
+    { label:'Scheduled',    value: schedCnt,              cls:'kpi--sched', icon:'&#128197;' },
+    { label:'Views (24h)',  value: fmtNum(d.views_24h),  cls:'kpi--views', icon:'&#128065;' },
+    { label:'Clicks (24h)', value: fmtNum(d.clicks_24h), cls:'kpi--clicks',icon:'&#128070;' },
+  ].map(k => `
+    <div class="kpi-card ${k.cls}">
+      <div class="kpi-label">${k.icon} ${escHtml(k.label)}</div>
+      <div class="kpi-value">${k.value}</div>
     </div>
   `).join('');
+
+  // Warnings
+  const warnings = [];
+  if (expiredCnt > 0) warnings.push(`${expiredCnt} page${expiredCnt>1?'s':''} expired — review and update.`);
+  const pagesWithNoButtons = pages.filter(p => p.is_active && (d.page_button_counts?.[p.id] === 0));
+  if (pagesWithNoButtons.length) warnings.push(`${pagesWithNoButtons.length} active page${pagesWithNoButtons.length>1?'s':''} have no buttons.`);
+
+  const warningsHtml = warnings.length ? `
+    <div class="warnings-panel">
+      <div class="warn-title">${iconWarning()} Attention required</div>
+      <ul>${warnings.map(w => `<li>&#8618; ${escHtml(w)}</li>`).join('')}</ul>
+    </div>` : '';
+
+  // Quick actions
+  const quickActionsHtml = `
+    <div class="dash-quick-grid">
+      <button class="dash-quick-btn" onclick="BKDN.navigate_('#/pages')">
+        ${iconPages()} <span class="dash-quick-label">Manage Pages</span>
+        <span class="dash-quick-sub">Edit buttons &amp; content</span>
+      </button>
+      <button class="dash-quick-btn" onclick="window.open('${escHtml(CFG.siteUrl)}/links/','_blank')">
+        ${iconExt()} <span class="dash-quick-label">View Public</span>
+        <span class="dash-quick-sub">Open /links in new tab</span>
+      </button>
+      <button class="dash-quick-btn" onclick="BKDN.navigate_('#/project')">
+        ${iconProject()} <span class="dash-quick-label">Project Hub</span>
+        <span class="dash-quick-sub">Ecosystem overview</span>
+      </button>
+      <button class="dash-quick-btn" onclick="BKDN.navigate_('#/scheduling')">
+        ${iconCalendar()} <span class="dash-quick-label">Scheduling</span>
+        <span class="dash-quick-sub">Timed visibility</span>
+      </button>
+      <button class="dash-quick-btn" onclick="BKDN.navigate_('#/settings')">
+        ${iconCog()} <span class="dash-quick-label">Settings</span>
+        <span class="dash-quick-sub">Social links &amp; URLs</span>
+      </button>
+    </div>
+  `;
 
   // Pages management cards
   const pageCardsHtml = pages.length ? pages.map(p => `
@@ -772,7 +831,7 @@ async function viewDashboard() {
     </div>
   `).join('') : `
     <div class="empty-state" style="padding:30px">
-      <p style="color:#64748b">No pages found. <a href="#/pages" style="color:#ef4444">Create one</a>.</p>
+      <p style="color:#64748b">No pages found. <a href="#/pages" style="color:#2563eb">Create one</a>.</p>
     </div>`;
 
   const topPages = (d.top_pages || []).map(p => `
@@ -795,21 +854,23 @@ async function viewDashboard() {
       </div>
     </div>
 
-    <div class="stats-grid">${statsHtml}</div>
+    ${warningsHtml}
 
-    <div class="card" style="margin-top:28px">
+    <div class="kpi-grid">${kpiHtml}</div>
+
+    <div style="margin-bottom:8px;font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.6px;font-weight:600">Quick Actions</div>
+    ${quickActionsHtml}
+
+    <div class="card" style="margin-top:4px">
       <div class="card-header">
-        <h3 class="card-title">Store Pages</h3>
-        <a href="#/pages" class="btn btn-ghost btn-sm">Manage All</a>
+        <h3 class="card-title">Pages Overview</h3>
+        <a href="#/pages" class="btn btn-ghost btn-sm" style="font-size:12px">View All</a>
       </div>
       <div class="page-mgmt-list">${pageCardsHtml}</div>
     </div>
 
     <div class="card" style="margin-top:20px">
-      <div class="card-header">
-        <h3 class="card-title">Top Pages <span style="color:#64748b;font-size:12px;font-weight:400">(last 7 days)</span></h3>
-        <a href="#/analytics" class="btn btn-ghost btn-sm">Full Analytics</a>
-      </div>
+      <div class="card-header"><h3 class="card-title">Top Pages (Last 7 days)</h3></div>
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>Page</th><th>Slug</th><th style="text-align:right">Views</th></tr></thead>
@@ -825,6 +886,10 @@ function greeting() {
   if (h < 12) return 'morning';
   if (h < 17) return 'afternoon';
   return 'evening';
+}
+
+function navigate_(hash) {
+  window.location.hash = hash;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -981,12 +1046,17 @@ async function viewPageEditor(id) {
 
   setContent(`
     ${pageTitle(escHtml(p.title), `/${escHtml(p.slug)}`)}
-    <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center">
-      <a href="${previewUrl}" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} Preview</a>
-      ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.savePage()">Save Changes</button>` : ''}
-      ${canEdit ? `<button class="btn btn-sm ${p.is_active?'btn-ghost':'btn-primary'}" onclick="BKDN.togglePageActive()">${p.is_active ? 'Unpublish' : 'Publish'}</button>` : ''}
-      <a href="#/pages" class="btn btn-ghost btn-sm" style="margin-left:auto">← Back to Pages</a>
+    <div class="publish-bar">
+      <span class="pub-status pub-status--${p.is_active ? 'published' : 'saved'}" id="pub-state-label">
+        ${p.is_active ? '&#9679; Published' : '&#9675; Draft'}
+      </span>
+      <a href="${previewUrl}" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} Preview Live</a>
+      ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="BKDN.savePage()" id="btn-save-page">Save Draft</button>` : ''}
+      ${canEdit ? `<button class="btn btn-sm btn-${p.is_active?'secondary':'primary'}" onclick="BKDN.togglePageActive()" id="btn-publish-page">${p.is_active ? 'Unpublish' : 'Publish'}</button>` : ''}
+      ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="BKDN.verifyPublicSync('${escHtml(p.slug)}')" title="Check public page matches admin state">${iconSync()} Verify Sync</button>` : ''}
+      <a href="#/pages" class="btn btn-ghost btn-sm" style="margin-left:auto">&#8592; Back</a>
     </div>
+    <div id="sync-result-area"></div>
 
     <div class="tabs" id="editor-tabs">
       <button class="tab active" data-tab="info"     onclick="BKDN.switchTab(this,'info')">Info</button>
@@ -1133,13 +1203,22 @@ async function savePage() {
     is_active:     p.is_active,
   };
 
+  const saveBtn = document.getElementById('btn-save-page');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
   const res = await PUT('/admin/pages/' + p.id, body);
   if (res?.ok) {
     state.currentPage = { ...p, ...body };
+    const stateLabel = document.getElementById('pub-state-label');
+    if (stateLabel) {
+      stateLabel.className = 'pub-status pub-status--saved';
+      stateLabel.innerHTML = '&#9675; Saved Draft';
+    }
     toast('Saved!');
   } else {
     toast(res?.data?.message || 'Save failed.', 'error');
   }
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Draft'; }
 }
 
 async function saveTheme() {
@@ -1167,10 +1246,54 @@ async function togglePageActive() {
   const res = await PUT('/admin/pages/' + p.id, { ...p, is_active: p.is_active ? 0 : 1 });
   if (res?.ok) {
     state.currentPage.is_active = p.is_active ? 0 : 1;
-    toast(state.currentPage.is_active ? 'Page published!' : 'Page unpublished.');
-    viewPageEditor(p.id);
+    const isNowActive = state.currentPage.is_active;
+    const stateLabel = document.getElementById('pub-state-label');
+    if (stateLabel) {
+      stateLabel.className = 'pub-status pub-status--' + (isNowActive ? 'published' : 'saved');
+      stateLabel.innerHTML = isNowActive ? '&#9679; Published' : '&#9675; Draft';
+    }
+    const publishBtn = document.getElementById('btn-publish-page');
+    if (publishBtn) publishBtn.textContent = isNowActive ? 'Unpublish' : 'Publish';
+    toast(isNowActive ? 'Page published!' : 'Page unpublished.');
   } else {
     toast('Failed to update page status.', 'error');
+  }
+}
+
+async function verifyPublicSync(slug) {
+  const resultArea = document.getElementById('sync-result-area');
+  if (!resultArea) return;
+  resultArea.innerHTML = '<div style="color:#64748b;font-size:13px;padding:8px 0">Checking public page…</div>';
+
+  const p = state.currentPage;
+  const adminButtons = state.currentButtons.filter(b => b.is_active && b.enabled);
+
+  try {
+    // Fetch the live public page HTML and count visible buttons
+    const res = await fetch(`${CFG.siteUrl}/links/${slug}?_nocache=${Date.now()}`);
+    const html = await res.text();
+
+    // Count .bkdn-btn occurrences as proxy for visible buttons
+    const publicCount = (html.match(/bkdn-btn/g) || []).length;
+    const adminCount  = adminButtons.length;
+
+    if (!p?.is_active) {
+      resultArea.innerHTML = `<div class="sync-result sync-warn">&#9651; Page is not published — public visitors see a 404. Publish it to make it live.</div>`;
+      return;
+    }
+
+    if (publicCount === 0 && adminCount === 0) {
+      resultArea.innerHTML = `<div class="sync-result sync-ok">&#10003; Public page is live. No visible buttons (may be correct).</div>`;
+      return;
+    }
+
+    if (Math.abs(publicCount - adminCount) <= 1) {
+      resultArea.innerHTML = `<div class="sync-result sync-ok">&#10003; Public page is in sync — ${publicCount} button${publicCount!==1?'s':''} visible.</div>`;
+    } else {
+      resultArea.innerHTML = `<div class="sync-result sync-warn">&#9651; Possible mismatch — admin shows ${adminCount} active buttons, public page shows ~${publicCount}. This may be normal if some buttons are conditionally hidden. <a href="${CFG.siteUrl}/links/${slug}" target="_blank" style="color:#fde68a">Check manually →</a></div>`;
+    }
+  } catch (e) {
+    resultArea.innerHTML = `<div class="sync-result sync-fail">&#9888; Could not reach public page. ${e.message}</div>`;
   }
 }
 
@@ -1935,17 +2058,35 @@ async function viewSettings() {
       </div>
     </div>
     <div class="card" style="margin-top:16px">
-      <div class="card-header"><h3 class="card-title">Social Links</h3></div>
+      <div class="card-header">
+        <h3 class="card-title">Social Links</h3>
+        <span style="font-size:11px;color:#64748b">Saved here, shown on all public pages</span>
+      </div>
       <div style="padding:20px">
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Instagram URL</label>
-            <input id="s-ig" class="form-control" value="${escHtml(opts.instagram_url||'')}">
+        <div class="social-card">
+          <div class="social-card-icon">&#128247;</div>
+          <div class="social-card-body">
+            <div class="social-card-label">Instagram</div>
+            <div class="social-card-url">${escHtml(opts.instagram_url||'(not set)')}</div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Facebook URL</label>
-            <input id="s-fb" class="form-control" value="${escHtml(opts.facebook_url||'')}">
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label class="form-label">Instagram URL</label>
+          <input id="s-ig" class="form-control" value="${escHtml(opts.instagram_url||'')}" placeholder="https://www.instagram.com/bakudanramen/">
+        </div>
+        <div class="social-card" style="margin-top:16px">
+          <div class="social-card-icon">&#128172;</div>
+          <div class="social-card-body">
+            <div class="social-card-label">Facebook</div>
+            <div class="social-card-url">${escHtml(opts.facebook_url||'(not set)')}</div>
           </div>
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label class="form-label">Facebook URL</label>
+          <input id="s-fb" class="form-control" value="${escHtml(opts.facebook_url||'')}" placeholder="https://www.facebook.com/…">
+        </div>
+        <div style="margin-top:10px;padding:10px 14px;background:#0f172a;border-radius:6px;font-size:12px;color:#64748b">
+          &#8618; Changes here update all store pages. After saving, use <strong>Verify Sync</strong> on any page editor to confirm the public page reflects the change.
         </div>
       </div>
     </div>
@@ -2200,6 +2341,93 @@ async function deleteUser(id, name) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   VIEW: SCHEDULING
+═══════════════════════════════════════════════════════════════════ */
+async function viewScheduling() {
+  setContent(loading());
+  const pagesRes = await GET('/admin/pages');
+  if (!pagesRes?.ok) { setContent(errBanner('Failed to load pages.', 'BKDN.viewScheduling()')); return; }
+  const pages = pagesRes.data.pages || [];
+
+  // Collect all buttons with scheduling across all pages
+  const allButtonFetches = pages.map(p => GET('/admin/pages/' + p.id + '/buttons').then(r => ({ page: p, buttons: r?.data?.buttons || [] })));
+  const allPageData = await Promise.all(allButtonFetches);
+
+  const now = new Date();
+  const scheduledItems = [];
+
+  allPageData.forEach(({ page, buttons }) => {
+    buttons.forEach(b => {
+      const startAt = b.start_at ? new Date(b.start_at) : null;
+      const endAt   = b.end_at   ? new Date(b.end_at)   : null;
+      const hasSchedule = !!(startAt || endAt);
+      if (!hasSchedule && b.is_active) return; // skip always-on with no schedule
+
+      let schedState = 'live';
+      if (!b.is_active)                        schedState = 'hidden';
+      else if (endAt && now > endAt)            schedState = 'expired';
+      else if (startAt && now < startAt)        schedState = 'scheduled';
+
+      scheduledItems.push({ page, button: b, startAt, endAt, schedState });
+    });
+  });
+
+  const byState = { scheduled: [], live: [], expired: [], hidden: [] };
+  scheduledItems.forEach(item => {
+    (byState[item.schedState] || byState.live).push(item);
+  });
+
+  function renderGroup(title, items, badgeClass) {
+    if (!items.length) return '';
+    return `
+      <div style="margin-bottom:24px">
+        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;font-weight:600">${escHtml(title)} <span class="badge badge-gray" style="font-size:10px">${items.length}</span></div>
+        <div class="sched-grid">
+          ${items.map(item => {
+            const b = item.button;
+            return `
+            <div class="sched-row">
+              <div class="sched-row-info">
+                <div class="sched-row-title">${escHtml(b.title)}</div>
+                <div class="sched-row-meta">
+                  <a href="#/pages/${item.page.id}" style="color:#60a5fa">${escHtml(item.page.title)}</a>
+                  ${b.icon_key ? `· <span style="color:#64748b">${escHtml(b.icon_key)}</span>` : ''}
+                </div>
+                <div class="sched-row-dates">
+                  ${item.startAt ? `<span class="sched-date-item">▶ Starts: ${item.startAt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
+                  ${item.endAt   ? `<span class="sched-date-item">■ Ends: ${item.endAt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
+                </div>
+              </div>
+              <div>
+                <span class="sched-badge-${item.schedState}">${escHtml(item.schedState.toUpperCase())}</span>
+              </div>
+              <a href="#/pages/${item.page.id}" class="btn btn-ghost btn-sm">${iconEdit()} Edit</a>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }
+
+  const totalScheduled = scheduledItems.length;
+
+  setContent(`
+    ${pageTitle('Scheduling', `${totalScheduled} scheduled or conditional button${totalScheduled!==1?'s':''}`)}
+    ${!totalScheduled ? `
+      <div class="card" style="text-align:center;padding:40px">
+        <div style="font-size:32px;margin-bottom:12px">&#128197;</div>
+        <div style="font-weight:600;color:#e2e8f0;margin-bottom:8px">No scheduled buttons yet</div>
+        <p style="color:#64748b;font-size:13px">Set start/end dates on any button from the Pages &amp; Buttons editor to control when it appears on the public page.</p>
+        <div style="margin-top:20px"><a href="#/pages" class="btn btn-primary btn-sm">${iconPages()} Go to Pages</a></div>
+      </div>` : `
+      ${renderGroup('Upcoming / Scheduled', byState.scheduled, 'sched-badge-sched')}
+      ${renderGroup('Currently Live (with schedule)', byState.live, 'sched-badge-live')}
+      ${renderGroup('Expired', byState.expired, 'sched-badge-expired')}
+      ${renderGroup('Hidden', byState.hidden, 'sched-badge-hidden')}
+    `}
+  `);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    PUBLIC API (attached to window for onclick handlers)
 ═══════════════════════════════════════════════════════════════════ */
 window.BKDN = {
@@ -2219,6 +2447,9 @@ window.BKDN = {
   openAddRedirect, addRedirect, deleteRedirect,
   // Analytics
   loadAnalytics, selectPeriod,
+  viewScheduling,
+  verifyPublicSync,
+  navigate_,
   // Shortlinks
   openAddShortlink, createShortlink, deleteShortlink, showQR, downloadQR,
   // Settings
