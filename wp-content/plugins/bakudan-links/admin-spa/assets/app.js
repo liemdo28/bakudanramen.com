@@ -2233,6 +2233,10 @@ window.BKDN = {
    BOOT
 ═══════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  // Signal the boot watchdog that JS loaded and executed successfully
+  window.BKDN_BOOTED = true;
+  document.dispatchEvent(new Event('bkdn:booted'));
+
   // Remove the static loading screen
   const splash = document.getElementById('spa-loading');
   if (splash) splash.remove();

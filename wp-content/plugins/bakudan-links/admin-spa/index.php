@@ -22,14 +22,40 @@ $site_url   = home_url();
 <body class="bkdn-spa">
 
 <div id="app">
-  <!-- Rendered by app.js -->
+  <!-- Rendered by app.js — replaced on DOMContentLoaded -->
   <div id="spa-loading" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#fff;font-family:sans-serif">
     <div style="text-align:center">
       <div style="font-size:48px;margin-bottom:12px">爆</div>
-      <div style="color:#64748b">Loading Links Hub...</div>
+      <div id="spa-loading-msg" style="color:#64748b;font-size:14px">Loading Links Hub...</div>
+      <div id="spa-loading-err" style="display:none;margin-top:24px;max-width:380px;padding:16px 20px;background:#1e293b;border:1px solid #7f1d1d;border-radius:10px;text-align:left">
+        <div style="color:#fca5a5;font-weight:600;margin-bottom:6px">&#9888; Admin failed to start</div>
+        <div id="spa-err-detail" style="color:#94a3b8;font-size:12px;margin-bottom:14px">The admin interface did not load in time. Check that the plugin is active and the REST API is reachable.</div>
+        <button onclick="window.location.reload()" style="padding:7px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600">Reload Page</button>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+// Boot watchdog — independent of app.js.
+// If BKDN_BOOTED is not true within 10 s, show error state.
+(function () {
+  var TIMEOUT = 10000;
+  var t = setTimeout(function () {
+    if (window.BKDN_BOOTED) return;
+    var msg = document.getElementById('spa-loading-msg');
+    var err = document.getElementById('spa-loading-err');
+    if (msg) msg.style.display = 'none';
+    if (err) err.style.display = 'block';
+    var detail = document.getElementById('spa-err-detail');
+    if (detail && !window.BKDN_CONFIG) {
+      detail.textContent = 'BKDN_CONFIG is missing — the PHP plugin may have a fatal error. Check the server error log.';
+    }
+  }, TIMEOUT);
+  // If app boots fast, cancel the watchdog
+  document.addEventListener('bkdn:booted', function () { clearTimeout(t); });
+})();
+</script>
 
 <script>
 window.BKDN_CONFIG = {

@@ -2,13 +2,13 @@
 /**
  * Plugin Name:  Bakudan Links Hub
  * Description:  Self-hosted Link Hub platform for bakudanramen.com — replaces Linktree. Serves /links, /links/{slug}, /go/{shortSlug} as standalone pages with analytics, subscribers, shortlinks, and redirect rules.
- * Version:      2.2.0
+ * Version:      2.6.0
  * Author:       Bakudan Ramen
  */
 
 defined('ABSPATH') || exit;
 
-define('BKDN_VERSION',     '2.2.0');
+define('BKDN_VERSION',     '2.6.0');
 define('BKDN_PLUGIN_FILE', __FILE__);
 define('BKDN_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 
