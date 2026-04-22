@@ -82,6 +82,7 @@ function can(roles) {
 const routes = [
   { pattern: /^\/login$/,              view: viewLogin },
   { pattern: /^\/dashboard$/,          view: viewDashboard },
+  { pattern: /^\/project$/,            view: viewProject },
   { pattern: /^\/pages$/,              view: viewPages },
   { pattern: /^\/pages\/(\d+)$/,       view: (m) => viewPageEditor(m[1]) },
   { pattern: /^\/analytics$/,          view: viewAnalytics },
@@ -156,7 +157,9 @@ function renderShell() {
         </div>
         <nav class="sidebar-nav">
           <a class="sidebar-link" href="#/dashboard" data-path="/dashboard">${iconDash()} Dashboard</a>
-          <a class="sidebar-link" href="#/pages"     data-path="/pages">${iconPages()} Pages & Buttons</a>
+          <a class="sidebar-link sidebar-link--project" href="#/project" data-path="/project">${iconProject()} Project Overview</a>
+          <div class="sidebar-divider"></div>
+          <a class="sidebar-link" href="#/pages"     data-path="/pages">${iconPages()} Pages &amp; Buttons</a>
           <a class="sidebar-link" href="#/analytics" data-path="/analytics">${iconChart()} Analytics</a>
           ${isMgr ? `<a class="sidebar-link" href="#/subscribers" data-path="/subscribers">${iconUsers()} Subscribers</a>` : ''}
           ${isMgr ? `<a class="sidebar-link" href="#/shortlinks"  data-path="/shortlinks">${iconLink()} Shortlinks</a>` : ''}
@@ -200,6 +203,7 @@ function setContent(html) {
 
 const NAV_LABELS = {
   '/dashboard':   'Dashboard',
+  '/project':     'Project Overview',
   '/pages':       'Pages & Buttons',
   '/analytics':   'Analytics',
   '/subscribers': 'Subscribers',
@@ -333,7 +337,8 @@ const iconTrash = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="n
 const iconCopy  = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 const iconExt   = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
 const iconDrag  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
-const iconQR    = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="16" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>`;
+const iconQR      = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="16" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>`;
+const iconProject = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
 
 /* ═══════════════════════════════════════════════════════════════════
    VIEW: LOGIN
@@ -514,6 +519,201 @@ function viewLogin() {
 
   // Focus email on load
   setTimeout(() => document.getElementById('login-email')?.focus(), 50);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW: PROJECT OVERVIEW (Agency Hub)
+═══════════════════════════════════════════════════════════════════ */
+function viewProject() {
+  const P = CFG.project || {};
+  const resources = P.resources || [];
+  const stores    = P.stores    || [];
+  const notes     = P.notes     || [];
+
+  const deployedAt = P.deployed_at
+    ? new Date(P.deployed_at).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    : '—';
+
+  // Status badge
+  const statusBadge = {
+    active:      '<span class="badge badge-green">&#9679; Active</span>',
+    maintenance: '<span class="badge badge-yellow">&#9651; Maintenance</span>',
+    issue:       '<span class="badge badge-red">&#9888; Issue</span>',
+  }[P.status] || '<span class="badge badge-gray">Unknown</span>';
+
+  // Resource type icons
+  const resIcons = {
+    website:       '&#127760;',
+    public_links:  '&#128279;',
+    admin_console: '&#9881;&#65039;',
+  };
+  const resColors = {
+    website:       '#1e3a5f',
+    public_links:  '#14532d',
+    admin_console: '#422006',
+  };
+  const resBadgeColors = {
+    website:       '#93c5fd',
+    public_links:  '#86efac',
+    admin_console: '#fde68a',
+  };
+
+  const resourceCards = resources.map(r => `
+    <div class="proj-resource-card" style="border-left:3px solid ${resBadgeColors[r.type]||'#334155'}">
+      <div class="proj-resource-icon" style="background:${resColors[r.type]||'#1e293b'};color:${resBadgeColors[r.type]||'#94a3b8'}">${resIcons[r.type]||'&#128279;'}</div>
+      <div class="proj-resource-body">
+        <div class="proj-resource-label">${escHtml(r.label)}</div>
+        <div class="proj-resource-desc">${escHtml(r.desc)}</div>
+        <a class="proj-resource-url" href="${escHtml(r.url)}" target="_blank" rel="noopener">${escHtml(r.url)}</a>
+      </div>
+      <a href="${escHtml(r.url)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm proj-open-btn" title="Open">
+        ${iconExt()} Open
+      </a>
+    </div>
+  `).join('');
+
+  const storeRows = stores.map(s => `
+    <tr>
+      <td style="font-weight:500;color:#e2e8f0">${escHtml(s.name)}</td>
+      <td><code>${escHtml(s.slug)}</code></td>
+      <td style="color:#64748b;font-size:12px">${escHtml(s.address)}</td>
+      <td>
+        <a href="${escHtml(CFG.siteUrl)}/links/${escHtml(s.slug)}" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} /links/${escHtml(s.slug)}</a>
+      </td>
+    </tr>
+  `).join('');
+
+  const notesHtml = notes.map(n => `
+    <li class="proj-note">
+      <span class="proj-note-icon">&#8618;</span>
+      ${escHtml(n)}
+    </li>
+  `).join('');
+
+  setContent(`
+    <!-- HEADER -->
+    <div class="proj-header">
+      <div class="proj-header-left">
+        <div class="proj-badge">PROJECT</div>
+        <h1 class="proj-title">${escHtml(P.name || 'Bakudan Ramen Links Ecosystem')}</h1>
+        <p class="proj-purpose">${escHtml(P.description || '')}</p>
+      </div>
+      <div class="proj-header-meta">
+        ${statusBadge}
+        <span class="badge badge-blue">v${escHtml(P.version||'—')}</span>
+      </div>
+    </div>
+
+    <!-- META ROW -->
+    <div class="proj-meta-row">
+      <div class="proj-meta-item">
+        <span class="proj-meta-label">Owner</span>
+        <span class="proj-meta-value">${escHtml(P.owner_team||'—')}</span>
+      </div>
+      <div class="proj-meta-item">
+        <span class="proj-meta-label">Support</span>
+        <span class="proj-meta-value"><a href="mailto:${escHtml(P.support||'')}" style="color:#94a3b8">${escHtml(P.support||'—')}</a></span>
+      </div>
+      <div class="proj-meta-item">
+        <span class="proj-meta-label">Environment</span>
+        <span class="proj-meta-value"><span class="badge badge-green">${escHtml(P.environment||'production')}</span></span>
+      </div>
+      <div class="proj-meta-item">
+        <span class="proj-meta-label">Last Deployed</span>
+        <span class="proj-meta-value">${escHtml(deployedAt)}</span>
+      </div>
+      <div class="proj-meta-item">
+        <span class="proj-meta-label">Repository</span>
+        <span class="proj-meta-value">${P.git_repo ? `<a href="${escHtml(P.git_repo)}" target="_blank" style="color:#94a3b8;font-size:12px">${escHtml(P.git_repo.replace('https://',''))}</a>` : '—'}</span>
+      </div>
+    </div>
+
+    <!-- SECTION A: ENDPOINTS -->
+    <div class="card" style="margin-top:24px">
+      <div class="card-header">
+        <h3 class="card-title">&#127760; Endpoints &amp; Resources</h3>
+        <span style="font-size:12px;color:#64748b">3 connected resources</span>
+      </div>
+      <div class="proj-resources">${resourceCards}</div>
+    </div>
+
+    <!-- SECTION B: STORES -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-header">
+        <h3 class="card-title">&#127974; Store Pages</h3>
+        <a href="#/pages" class="btn btn-ghost btn-sm">Manage Buttons</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Store</th><th>Slug</th><th>Address</th><th>Public Link</th></tr></thead>
+          <tbody>${storeRows || '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">No stores configured.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECTION C: OPERATIONAL FLOW -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-header">
+        <h3 class="card-title">&#9654; Operational Flow</h3>
+      </div>
+      <div class="proj-flow">
+        ${[
+          { step:'1', label:'Open Dashboard',   desc:'Navigate to /links-admin and login with your admin email.',   action:`<a href="#/dashboard" class="btn btn-ghost btn-sm">Open Dashboard</a>` },
+          { step:'2', label:'Select a Page',    desc:'Go to Pages & Buttons. Choose the store you want to update.', action:`<a href="#/pages" class="btn btn-ghost btn-sm">Go to Pages</a>` },
+          { step:'3', label:'Manage Buttons',   desc:'Toggle visibility, edit URLs, reorder, schedule — all from the Buttons tab.', action:'' },
+          { step:'4', label:'Publish Changes',  desc:'Use Publish/Unpublish in the page editor. Changes are instant — no deployment.', action:'' },
+          { step:'5', label:'Verify on /links', desc:'Open the public page to confirm changes are live.',                             action:`<a href="${escHtml(CFG.siteUrl)}/links/" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} View /links</a>` },
+        ].map(s => `
+          <div class="proj-flow-step">
+            <div class="proj-flow-num">${s.step}</div>
+            <div class="proj-flow-body">
+              <div class="proj-flow-label">${s.label}</div>
+              <div class="proj-flow-desc">${s.desc}</div>
+            </div>
+            ${s.action ? `<div class="proj-flow-action">${s.action}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- SECTION D: NOTES -->
+    ${notes.length ? `
+    <div class="card" style="margin-top:20px">
+      <div class="card-header">
+        <h3 class="card-title">&#128204; Notes &amp; Warnings</h3>
+      </div>
+      <ul class="proj-notes-list">${notesHtml}</ul>
+    </div>` : ''}
+
+    <!-- SECTION E: QUICK ACTIONS -->
+    <div class="card proj-actions-card" style="margin-top:20px">
+      <h3 class="card-title" style="margin-bottom:16px">&#128640; Quick Actions</h3>
+      <div class="proj-actions-grid">
+        ${resources.map(r => `
+          <a href="${escHtml(r.url)}" target="_blank" rel="noopener" class="proj-action-btn">
+            <span class="proj-action-icon">${resIcons[r.type]||'&#128279;'}</span>
+            <span class="proj-action-label">${escHtml(r.label)}</span>
+            <span class="proj-action-sub">${escHtml(r.url.replace('https://',''))}</span>
+          </a>
+        `).join('')}
+        <a href="#/pages" class="proj-action-btn">
+          <span class="proj-action-icon">&#9998;</span>
+          <span class="proj-action-label">Edit Buttons</span>
+          <span class="proj-action-sub">Manage all store pages</span>
+        </a>
+        <a href="#/analytics" class="proj-action-btn">
+          <span class="proj-action-icon">&#128200;</span>
+          <span class="proj-action-label">View Analytics</span>
+          <span class="proj-action-sub">Traffic and click data</span>
+        </a>
+        <a href="#/settings" class="proj-action-btn">
+          <span class="proj-action-icon">&#9881;&#65039;</span>
+          <span class="proj-action-label">Settings</span>
+          <span class="proj-action-sub">URLs, social links, toggles</span>
+        </a>
+      </div>
+    </div>
+  `);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
