@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunkimage_optimization=globalThis.webpackChunkimage_optimization||[]).push([[37],{37(i){i.exports=JSON.parse('{"example":{"component":"רכיב לדוגמה"}}')}}]);
