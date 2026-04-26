@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Links Hub — Admin</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body class="bkdn-spa">
+
+<div id="app">
+  <div id="spa-loading" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#fff;font-family:sans-serif">
+    <div style="text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">爆</div>
+      <div id="spa-loading-msg" style="color:#64748b;font-size:14px">Loading Links Hub...</div>
+      <div id="spa-loading-err" style="display:none;margin-top:24px;max-width:380px;padding:16px 20px;background:#1e293b;border:1px solid #7f1d1d;border-radius:10px;text-align:left">
+        <div style="color:#fca5a5;font-weight:600;margin-bottom:6px">&#9888; Admin failed to start</div>
+        <div id="spa-err-detail" style="color:#94a3b8;font-size:12px;margin-bottom:14px">The admin interface did not load. Check that the API server is reachable.</div>
+        <button onclick="window.location.reload()" style="padding:7px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600">Reload Page</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TIMEOUT = 10000;
+  var t = setTimeout(function () {
+    if (window.BKDN_BOOTED) return;
+    var msg = document.getElementById('spa-loading-msg');
+    var err = document.getElementById('spa-loading-err');
+    if (msg) msg.style.display = 'none';
+    if (err) err.style.display = 'block';
+    var detail = document.getElementById('spa-err-detail');
+    if (detail && !window.BKDN_CONFIG) {
+      detail.textContent = 'BKDN_CONFIG is missing — the API server may not be running.';
+    }
+  }, TIMEOUT);
+  document.addEventListener('bkdn:booted', function () { clearTimeout(t); });
+})();
+</script>
+
+<script>
+window.BKDN_CONFIG = {
+  rest:    "https://www.bakudanramen.com/api",
+  siteUrl: "https://www.bakudanramen.com",
+  version: "3.1.0",
+  iconKeys: ["order","website","email","events","instagram","facebook","directions","phone","menu","gift","ticket","external","blog","social"],
+  project: {
+    key:         "bakudan-links",
+    name:        "Bakudan Ramen — Links Ecosystem",
+    description: "Self-hosted Link Hub + Blog CMS for bakudanramen.com",
+    purpose:     "Replace Linktree subscription. Full control over links, analytics, scheduling, and content.",
+    owner_team:  "Marketing / Agency",
+    support:     "admin@bakudanramen.com",
+    status:      "active",
+    environment: "production",
+    git_repo:    "https://github.com/liemdo28/bakudanramen.com",
+    resources: [
+      { type:"website",       label:"Main Website",          url:"https://www.bakudanramen.com" },
+      { type:"public_links",  label:"Public Links Page",     url:"https://www.bakudanramen.com/links" },
+      { type:"admin_console", label:"Links Admin Dashboard", url:"https://www.bakudanramen.com/links-admin" }
+    ],
+    stores: [
+      { slug:"rim",       name:"The Rim",    address:"17619 La Cantera Pkwy #208" },
+      { slug:"stone-oak", name:"Stone Oak",  address:"22506 US Hwy 281 N #106" },
+      { slug:"bandera",   name:"Bandera",    address:"11309 Bandera Rd #111" }
+    ],
+    notes: [
+      "Changes to /links reflect immediately — no deployment needed.",
+      "QR codes point to /links/{slug}. Do NOT change page slugs after printing.",
+      "To add new buttons: Pages → select store → Buttons tab.",
+      "Schedule a button using start_at / end_at — it will auto show/hide."
+    ]
+  }
+};
+</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

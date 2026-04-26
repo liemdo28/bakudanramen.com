@@ -1,0 +1,10 @@
+Options -Indexes
+RewriteEngine On
+RewriteBase /links-admin/
+
+# Serve real files (app.js, app.css) as-is
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# All other requests → index.html (SPA hash routing)
+RewriteRule ^ index.html [L]
