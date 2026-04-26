@@ -1,1 +1,10 @@
 Options -Indexes
+RewriteEngine On
+
+# /links-admin (no trailing slash) → /links-admin/ (permanent redirect)
+RewriteRule ^links-admin$ /links-admin/ [R=301,L]
+
+# SPA fallback: /links-admin/* (non-file paths) → links-admin/index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^links-admin/(.*)$ /links-admin/index.html [L]
