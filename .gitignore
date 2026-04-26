@@ -1,33 +1,32 @@
-# ── WordPress core (không cần track, download lại được) ──────────────
-wp-admin/
-wp-includes/
-
-# ── Sensitive files ───────────────────────────────────────────────────
-wp-config.php
-wp-config-local.php
-.htaccess
-
-# ── SQL dumps ─────────────────────────────────────────────────────────
-*.sql
-
-# ── Media uploads (binary, quá nặng) ─────────────────────────────────
-wp-content/uploads/
-
-# ── Cache & auto-generated ────────────────────────────────────────────
-wp-content/cache/
-wp-content/upgrade/
-wp-content/backup-db/
-wp-content/advanced-cache.php
-wp-content/wp-cache-config.php
-wp-content/blogs.dir/
-
-# ── OS / Editor ───────────────────────────────────────────────────────
+# OS files
 .DS_Store
 Thumbs.db
-desktop.ini
-.vscode/
-.idea/
+ehthumbs.db
+Desktop.ini
+
+# Editor files
 *.swp
 *.swo
+*~
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+*.map
+
+# Logs
 *.log
-error_log
