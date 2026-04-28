@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Bakudan Ramen — Preview Links</title>
+<meta name="description" content="Internal preview — Bakudan Ramen links hub.">
+<meta name="theme-color" content="#0d0d0d">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;
+  --card:#191919;
+  --card-hover:#212121;
+  --border:#282828;
+  --red:#e01c1c;
+  --red-dark:#c01414;
+  --text:#fff;
+  --muted:#666;
+  --muted2:#888;
+  --r:14px;
+}
+html{background:var(--bg)}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 0 64px;
+}
+
+/* Preview banner */
+.preview-bar{
+  width:100%;background:#1a1a00;border-bottom:1px solid #333300;
+  text-align:center;padding:8px 16px;
+  font-size:11px;letter-spacing:.06em;color:#aaaa44;
+}
+
+.wrap{width:100%;max-width:430px;padding:40px 20px 0}
+
+/* Header */
+.hdr{text-align:center;margin-bottom:32px}
+.kanji{
+  width:82px;height:82px;background:var(--red);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 18px;font-size:42px;line-height:1;
+  box-shadow:0 0 48px rgba(224,28,28,.38);
+}
+.brand-name{font-size:20px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.divider{width:36px;height:2px;background:var(--red);margin:10px auto}
+.brand-sub{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted2)}
+
+/* Links */
+.links{display:flex;flex-direction:column;gap:10px}
+
+/* Featured red CTA */
+.btn-featured{
+  width:100%;border:none;cursor:pointer;
+  background:var(--red);border-radius:var(--r);
+  padding:20px 20px 18px;text-align:center;color:#fff;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s,transform .1s;
+  user-select:none;display:block;text-decoration:none;
+}
+.btn-featured:active{transform:scale(.98);background:var(--red-dark)}
+.btn-featured-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.btn-featured-sub{font-size:12px;opacity:.8}
+
+/* Dark cards */
+.lnk{
+  display:flex;align-items:center;gap:14px;
+  padding:15px 16px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);color:var(--text);text-decoration:none;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .15s,border-color .15s;width:100%;
+  font:inherit;text-align:left;
+}
+.lnk:active,.lnk:hover{background:var(--card-hover);border-color:#3a3a3a}
+
+.ico{
+  width:42px;height:42px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:20px;
+}
+.lnk-body{flex:1;min-width:0}
+.lnk-title{font-size:15px;font-weight:600}
+.lnk-sub{font-size:12px;color:var(--muted2);margin-top:2px}
+
+/* Toast notification */
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:#222;border:1px solid #444;border-radius:10px;
+  padding:12px 20px;font-size:13px;color:var(--text);
+  white-space:nowrap;pointer-events:none;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .25s;
+  opacity:0;z-index:999;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+footer{margin-top:48px;text-align:center;font-size:12px;color:var(--muted);line-height:1.8;padding:0 20px}
+footer a{color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="preview-bar">🔒 PREVIEW — Internal Use Only — Not publicly indexed</div>
+
+<div class="wrap">
+  <div class="hdr">
+    <div class="kanji">爆</div>
+    <div class="brand-name">Bakudan Ramen</div>
+    <div class="divider"></div>
+    <div class="brand-sub">Authentic Japanese Ramen &middot; San Antonio</div>
+  </div>
+
+  <div class="links" id="links"></div>
+
+  <footer>
+    <p>&copy; 2026 Bakudan Ramen</p>
+    <p><a href="https://www.bakudanramen.com">bakudanramen.com</a></p>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var BASE = '/links/bakudan-temp';
+
+var items = [
+  {
+    id: 'midweek',
+    title: 'MIDWEEK RAMEN NIGHT — $22 Mon/Tue/Wed',
+    subtitle: 'Limited-time weekly special',
+    icon: '🍜',
+    url: 'https://rim.bakudanramen.com/',
+    featured: true,
+    enabled: true,
+    openInNewTab: true,
+    destinationType: 'campaign_landing',
+    sortOrder: 1
+  },
+  {
+    id: 'locations',
+    title: 'Find Your Bakudan',
+    subtitle: 'RIM · Stone Oak · Bandera',
+    icon: '📍',
+    url: BASE + '/locations',
+    featured: false,
+    enabled: true,
+    destinationType: 'location_selector',
+    sortOrder: 2
+  },
+  {
+    id: 'rewards',
+    title: 'Join Bakudan Rewards',
+    subtitle: 'Earn Double on Midweek',
+    icon: '🎟️',
+    url: 'https://www.toasttab.com/bakudanramen/rewardsSignup',
+    featured: false,
+    enabled: true,
+    openInNewTab: true,
+    destinationType: 'toast_rewards',
+    sortOrder: 3
+  },
+  {
+    id: 'order',
+    title: 'Order Delivery',
+    subtitle: 'Choose the best location near you',
+    icon: '🛵',
+    url: BASE + '/order',
+    featured: false,
+    enabled: true,
+    destinationType: 'geo_smart_order',
+    sortOrder: 4
+  },
+  {
+    id: 'reservation',
+    title: 'Make a Reservation',
+    subtitle: 'Book your table',
+    icon: '📅',
+    url: '#',
+    featured: false,
+    enabled: false,
+    destinationType: 'reservation_provider',
+    placeholderMessage: 'Reservation link coming soon',
+    sortOrder: 5
+  },
+  {
+    id: 'gift-cards',
+    title: 'Gift Cards',
+    subtitle: 'Give the gift of Bakudan',
+    icon: '🎁',
+    url: '#',
+    featured: false,
+    enabled: false,
+    destinationType: 'toast_gift_cards',
+    placeholderMessage: 'Gift card link coming soon',
+    sortOrder: 6
+  },
+  {
+    id: 'instagram',
+    title: 'Tag Us — @bakudanramen',
+    subtitle: 'Share your Bakudan moment',
+    icon: '📸',
+    url: 'https://www.instagram.com/bakudanramen',
+    featured: false,
+    enabled: true,
+    openInNewTab: true,
+    destinationType: 'instagram_ugc',
+    sortOrder: 7
+  }
+];
+
+var toastTimer;
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2800);
+}
+
+function handleClick(item, e) {
+  e.preventDefault();
+  if (!item.enabled) {
+    showToast(item.placeholderMessage || 'Coming soon');
+    return;
+  }
+  if (item.openInNewTab) {
+    window.open(item.url, '_blank', 'noopener,noreferrer');
+  } else {
+    window.location.href = item.url;
+  }
+}
+
+function render() {
+  var sorted = items.slice().sort(function(a,b){ return a.sortOrder - b.sortOrder; });
+  var container = document.getElementById('links');
+  sorted.forEach(function(item) {
+    if (item.featured) {
+      var btn = document.createElement('a');
+      btn.className = 'btn-featured';
+      btn.href = item.enabled ? item.url : '#';
+      if (item.openInNewTab && item.enabled) { btn.target = '_blank'; btn.rel = 'noopener noreferrer'; }
+      btn.innerHTML = '<div class="btn-featured-title">' + esc(item.icon) + ' ' + esc(item.title) + '</div>'
+        + '<div class="btn-featured-sub">' + esc(item.subtitle) + '</div>';
+      btn.addEventListener('click', function(e){ if (!item.enabled){ e.preventDefault(); showToast(item.placeholderMessage || 'Coming soon'); } });
+      container.appendChild(btn);
+    } else {
+      var btn = document.createElement('button');
+      btn.className = 'lnk';
+      btn.type = 'button';
+      btn.innerHTML = '<div class="ico">' + esc(item.icon) + '</div>'
+        + '<div class="lnk-body">'
+        + '<div class="lnk-title">' + esc(item.title) + '</div>'
+        + '<div class="lnk-sub">' + esc(item.subtitle) + '</div>'
+        + '</div>';
+      btn.addEventListener('click', function(e){ handleClick(item, e); });
+      if (!item.enabled) { btn.style.opacity = '.55'; }
+      container.appendChild(btn);
+    }
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+render();
+</script>
+</body>
+</html>

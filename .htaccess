@@ -30,6 +30,9 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^links-admin/(.*)$ /links-admin/index.html [L]
 
+# /links-temp → bakudan-temp preview
+RewriteRule ^links-temp/?$ /links/bakudan-temp/ [R=301,L]
+
 # /links SPA
 RewriteRule ^links$ /links/ [R=301,L]
 RewriteCond %{REQUEST_FILENAME} !-f
