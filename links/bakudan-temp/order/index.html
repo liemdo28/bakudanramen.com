@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Bakudan Ramen — Order Online</title>
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#000000">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0d0d;--card:#191919;--card-hover:#212121;
-  --border:#282828;--red:#e01c1c;--red-dark:#c01414;
-  --text:#fff;--muted:#666;--muted2:#888;--r:14px;
+  --bg:#000;--surface:#111;--surface-hover:#1a1a1a;
+  --border:rgba(255,255,255,0.08);
+  --red:#e11d2e;--red-dark:#b91c1c;
+  --text:#fff;--muted:#9ca3af;--r:14px;
 }
 html{background:var(--bg)}
 body{
@@ -22,15 +23,15 @@ body{
   padding:0 0 64px;
 }
 .preview-bar{
-  width:100%;background:#1a1a00;border-bottom:1px solid #333300;
+  width:100%;background:#111;border-bottom:1px solid rgba(255,255,255,0.06);
   text-align:center;padding:8px 16px;
-  font-size:11px;letter-spacing:.06em;color:#aaaa44;
+  font-size:11px;letter-spacing:.08em;color:var(--muted);
 }
 .wrap{width:100%;max-width:430px;padding:40px 20px 0}
 .back{
   display:inline-flex;align-items:center;gap:6px;
-  font-size:13px;color:var(--muted2);text-decoration:none;margin-bottom:28px;
-  -webkit-tap-highlight-color:transparent;
+  font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:28px;
+  -webkit-tap-highlight-color:transparent;transition:color .15s;
 }
 .back:hover{color:var(--text)}
 .hdr{text-align:center;margin-bottom:32px}
@@ -38,53 +39,64 @@ body{
   width:64px;height:64px;background:var(--red);border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   margin:0 auto 14px;font-size:32px;
-  box-shadow:0 0 32px rgba(224,28,28,.35);
+  box-shadow:0 0 32px rgba(225,29,46,.32);
 }
 .pg-title{font-size:20px;font-weight:800;margin-bottom:4px}
-.pg-sub{font-size:13px;color:var(--muted2)}
+.pg-sub{font-size:13px;color:var(--muted)}
 
-/* States */
+/* State visibility */
 #state-loading,#state-found,#state-manual{display:none}
 #state-loading.active,#state-found.active,#state-manual.active{display:block}
 
-.state-box{text-align:center;padding:32px 20px}
+.state-box{text-align:center;padding:28px 20px}
 .spinner{
-  width:36px;height:36px;border:3px solid #333;border-top-color:var(--red);
+  width:36px;height:36px;
+  border:3px solid rgba(255,255,255,0.1);border-top-color:var(--red);
   border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-.state-label{font-size:15px;color:var(--muted2);margin-bottom:6px}
-.state-store{font-size:20px;font-weight:700;margin-bottom:8px}
+.state-label{font-size:14px;color:var(--muted);margin-bottom:6px}
+.state-store{font-size:20px;font-weight:700;margin-bottom:4px}
 
-.btn-redirect{
+/* Red primary CTA */
+.btn-go{
   display:block;width:100%;
   background:var(--red);color:#fff;
   border:none;border-radius:var(--r);
-  padding:16px;font-size:16px;font-weight:700;
+  padding:16px;font-size:15px;font-weight:700;
   cursor:pointer;text-align:center;text-decoration:none;
-  transition:background .15s;margin-top:12px;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s;margin-top:14px;
 }
-.btn-redirect:hover{background:var(--red-dark)}
+.btn-go:hover{background:var(--red-dark)}
+.btn-go:active{background:var(--red-dark);transform:scale(.98)}
 
 .manual-title{font-size:16px;font-weight:700;margin-bottom:4px;text-align:center}
-.manual-sub{font-size:13px;color:var(--muted2);margin-bottom:16px;text-align:center}
+.manual-sub{font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center}
+.divider-text{
+  text-align:center;font-size:11px;color:rgba(255,255,255,0.2);
+  letter-spacing:.06em;text-transform:uppercase;margin:16px 0 12px;
+}
 
 .stores{display:flex;flex-direction:column;gap:10px}
 .store-lnk{
   display:flex;align-items:center;gap:14px;
   padding:15px 16px;
-  background:var(--card);border:1px solid var(--border);
+  background:var(--surface);border:1px solid var(--border);
   border-radius:var(--r);color:var(--text);text-decoration:none;
-  transition:background .15s,border-color .15s;
   -webkit-tap-highlight-color:transparent;
+  transition:background .15s,border-color .15s;
 }
-.store-lnk:active,.store-lnk:hover{background:var(--card-hover);border-color:#3a3a3a}
+.store-lnk:active,.store-lnk:hover{background:var(--surface-hover);border-color:rgba(255,255,255,0.15)}
+/* Monochrome icon — no color fills */
 .store-ico{
-  width:42px;height:42px;background:var(--red);border-radius:10px;
+  width:42px;height:42px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;
 }
 .store-name{font-size:15px;font-weight:700}
-.store-addr{font-size:11px;color:var(--muted2);margin-top:2px}
+.store-addr{font-size:11px;color:var(--muted);margin-top:2px}
 
 footer{margin-top:48px;text-align:center;font-size:12px;color:var(--muted);line-height:1.8}
 footer a{color:var(--muted);text-decoration:none}
@@ -97,14 +109,13 @@ footer a{color:var(--muted);text-decoration:none}
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     Back to Links
   </a>
-
   <div class="hdr">
     <div class="kanji">爆</div>
-    <div class="pg-title">Order Delivery</div>
-    <div class="pg-sub">Finding your nearest Bakudan…</div>
+    <div class="pg-title">Order Online</div>
+    <div class="pg-sub" id="hdr-sub">Finding your nearest Bakudan…</div>
   </div>
 
-  <!-- State: locating -->
+  <!-- Locating -->
   <div id="state-loading" class="active">
     <div class="state-box">
       <div class="spinner"></div>
@@ -112,43 +123,34 @@ footer a{color:var(--muted);text-decoration:none}
     </div>
   </div>
 
-  <!-- State: found nearest -->
+  <!-- Nearest found -->
   <div id="state-found">
     <div class="state-box">
-      <div class="state-label">Nearest location:</div>
+      <div class="state-label">Nearest location</div>
       <div class="state-store" id="found-name"></div>
-      <div class="state-label" id="found-addr" style="margin-bottom:0"></div>
-      <a class="btn-redirect" id="found-btn" href="#" target="_blank" rel="noopener noreferrer">Order from this location →</a>
-      <p style="margin-top:16px;font-size:12px;color:var(--muted)">Not right? Choose below.</p>
+      <div class="state-label" id="found-addr"></div>
+      <a class="btn-go" id="found-btn" href="#" target="_blank" rel="noopener noreferrer">Order from this location →</a>
     </div>
+    <div class="divider-text">or choose a different store</div>
     <div class="stores" id="other-stores"></div>
   </div>
 
-  <!-- State: manual selector -->
+  <!-- Manual selector -->
   <div id="state-manual">
-    <div class="manual-title">Choose your order location</div>
+    <div class="manual-title">Choose your location</div>
     <div class="manual-sub">Select the Bakudan nearest you</div>
     <div class="stores">
       <a class="store-lnk" href="https://order.toasttab.com/online/bakudanramen" target="_blank" rel="noopener noreferrer">
         <div class="store-ico">🏮</div>
-        <div>
-          <div class="store-name">The Rim</div>
-          <div class="store-addr">17619 La Cantera Pkwy #208</div>
-        </div>
+        <div><div class="store-name">The Rim</div><div class="store-addr">17619 La Cantera Pkwy #208</div></div>
       </a>
       <a class="store-lnk" href="https://order.toasttab.com/online/bakudan-ramen-stone-oak" target="_blank" rel="noopener noreferrer">
         <div class="store-ico">🏮</div>
-        <div>
-          <div class="store-name">Stone Oak</div>
-          <div class="store-addr">22506 US Hwy 281 N #106</div>
-        </div>
+        <div><div class="store-name">Stone Oak</div><div class="store-addr">22506 US Hwy 281 N #106</div></div>
       </a>
       <a class="store-lnk" href="https://order.toasttab.com/online/bakudan-bandera" target="_blank" rel="noopener noreferrer">
         <div class="store-ico">🏮</div>
-        <div>
-          <div class="store-name">Bandera</div>
-          <div class="store-addr">11309 Bandera Rd #111</div>
-        </div>
+        <div><div class="store-name">Bandera</div><div class="store-addr">11309 Bandera Rd #111</div></div>
       </a>
     </div>
   </div>
@@ -166,35 +168,33 @@ var STORES = [
   { key:'bandera',   name:'Bandera',   addr:'11309 Bandera Rd #111',       lat:29.5484131, lng:-98.6627874, url:'https://order.toasttab.com/online/bakudan-bandera' }
 ];
 
-function haversine(lat1, lng1, lat2, lng2) {
-  var R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
-  var a = Math.sin(dLat/2)*Math.sin(dLat/2)
-        + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function haversine(lat1,lng1,lat2,lng2) {
+  var R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-function nearest(lat, lng) {
-  return STORES.reduce(function(best, s) {
-    var d = haversine(lat, lng, s.lat, s.lng);
-    return d < best.dist ? {store:s, dist:d} : best;
-  }, {store:STORES[0], dist:Infinity}).store;
+function nearest(lat,lng) {
+  return STORES.reduce(function(best,s){
+    var d=haversine(lat,lng,s.lat,s.lng);
+    return d<best.dist?{store:s,dist:d}:best;
+  },{store:STORES[0],dist:Infinity}).store;
 }
 
 function setState(id) {
   ['loading','found','manual'].forEach(function(s){
-    var el = document.getElementById('state-'+s);
-    el.classList.toggle('active', s === id);
+    document.getElementById('state-'+s).classList.toggle('active',s===id);
   });
 }
 
 function showFound(store) {
   document.getElementById('found-name').textContent = store.name;
   document.getElementById('found-addr').textContent = store.addr;
-  var btn = document.getElementById('found-btn');
-  btn.href = store.url;
+  document.getElementById('found-btn').href = store.url;
+  document.getElementById('hdr-sub').textContent = 'Nearest Bakudan found';
 
   var others = document.getElementById('other-stores');
-  others.innerHTML = STORES.filter(function(s){ return s.key !== store.key; }).map(function(s){
+  others.innerHTML = STORES.filter(function(s){ return s.key!==store.key; }).map(function(s){
     return '<a class="store-lnk" href="'+s.url+'" target="_blank" rel="noopener noreferrer">'
       +'<div class="store-ico">🏮</div>'
       +'<div><div class="store-name">'+s.name+'</div><div class="store-addr">'+s.addr+'</div></div>'
@@ -207,24 +207,17 @@ var timedOut = false;
 var geoTimer = setTimeout(function(){
   timedOut = true;
   setState('manual');
+  document.getElementById('hdr-sub').textContent = 'Choose your location';
 }, 3000);
 
 if (!navigator.geolocation) {
-  clearTimeout(geoTimer);
-  setState('manual');
+  clearTimeout(geoTimer); setState('manual');
+  document.getElementById('hdr-sub').textContent = 'Choose your location';
 } else {
   navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      if (timedOut) return;
-      clearTimeout(geoTimer);
-      showFound(nearest(pos.coords.latitude, pos.coords.longitude));
-    },
-    function() {
-      if (timedOut) return;
-      clearTimeout(geoTimer);
-      setState('manual');
-    },
-    { timeout: 2800, maximumAge: 300000 }
+    function(pos){ if(timedOut)return; clearTimeout(geoTimer); showFound(nearest(pos.coords.latitude,pos.coords.longitude)); },
+    function(){ if(timedOut)return; clearTimeout(geoTimer); setState('manual'); document.getElementById('hdr-sub').textContent='Choose your location'; },
+    { timeout:2800, maximumAge:300000 }
   );
 }
 </script>

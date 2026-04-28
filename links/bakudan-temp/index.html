@@ -6,19 +6,19 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Bakudan Ramen — Preview Links</title>
 <meta name="description" content="Internal preview — Bakudan Ramen links hub.">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#000000">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0d0d;
-  --card:#191919;
-  --card-hover:#212121;
-  --border:#282828;
-  --red:#e01c1c;
-  --red-dark:#c01414;
+  --bg:#000;
+  --surface:#111;
+  --surface-hover:#1a1a1a;
+  --border:rgba(255,255,255,0.08);
+  --red:#e11d2e;
+  --red-dark:#b91c1c;
   --text:#fff;
-  --muted:#666;
-  --muted2:#888;
+  --text-2:#e5e5e5;
+  --muted:#9ca3af;
   --r:14px;
 }
 html{background:var(--bg)}
@@ -26,16 +26,16 @@ body{
   background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
-  min-height:100vh;
-  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
   padding:0 0 64px;
 }
 
 /* Preview banner */
 .preview-bar{
-  width:100%;background:#1a1a00;border-bottom:1px solid #333300;
+  width:100%;
+  background:#111;border-bottom:1px solid rgba(255,255,255,0.06);
   text-align:center;padding:8px 16px;
-  font-size:11px;letter-spacing:.06em;color:#aaaa44;
+  font-size:11px;letter-spacing:.08em;color:var(--muted);
 }
 
 .wrap{width:100%;max-width:430px;padding:40px 20px 0}
@@ -46,17 +46,17 @@ body{
   width:82px;height:82px;background:var(--red);border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   margin:0 auto 18px;font-size:42px;line-height:1;
-  box-shadow:0 0 48px rgba(224,28,28,.38);
+  box-shadow:0 0 48px rgba(225,29,46,.35);
 }
 .brand-name{font-size:20px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 .divider{width:36px;height:2px;background:var(--red);margin:10px auto}
-.brand-sub{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted2)}
+.brand-sub{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
 
-/* Links */
+/* Links stack */
 .links{display:flex;flex-direction:column;gap:10px}
 
-/* Featured red CTA */
-.btn-featured{
+/* Primary red CTA */
+.btn-primary{
   width:100%;border:none;cursor:pointer;
   background:var(--red);border-radius:var(--r);
   padding:20px 20px 18px;text-align:center;color:#fff;
@@ -64,35 +64,72 @@ body{
   transition:background .15s,transform .1s;
   user-select:none;display:block;text-decoration:none;
 }
-.btn-featured:active{transform:scale(.98);background:var(--red-dark)}
-.btn-featured-title{font-size:17px;font-weight:700;margin-bottom:4px}
-.btn-featured-sub{font-size:12px;opacity:.8}
+.btn-primary:active{transform:scale(.98);background:var(--red-dark)}
+.btn-primary:hover{background:var(--red-dark)}
+.btn-primary-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.btn-primary-sub{font-size:12px;opacity:.8}
 
-/* Dark cards */
+/* Store picker (expanded under Order Online) */
+.store-picker{
+  display:none;flex-direction:column;gap:8px;margin-top:8px;
+  animation:fd .2s ease;
+}
+.store-picker.open{display:flex}
+@keyframes fd{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+.store-a{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:11px;color:var(--text);text-decoration:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s,border-color .15s;
+}
+.store-a:active,.store-a:hover{background:var(--surface-hover);border-color:rgba(255,255,255,0.15)}
+.store-ico{
+  width:38px;height:38px;
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:9px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:18px;
+}
+.store-name{font-size:14px;font-weight:700}
+.store-addr{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Dark card buttons */
 .lnk{
   display:flex;align-items:center;gap:14px;
   padding:15px 16px;
-  background:var(--card);border:1px solid var(--border);
+  background:var(--surface);border:1px solid var(--border);
   border-radius:var(--r);color:var(--text);text-decoration:none;
   cursor:pointer;-webkit-tap-highlight-color:transparent;
-  transition:background .15s,border-color .15s;width:100%;
-  font:inherit;text-align:left;
+  transition:background .15s,border-color .15s;
+  width:100%;font:inherit;text-align:left;
 }
-.lnk:active,.lnk:hover{background:var(--card-hover);border-color:#3a3a3a}
+.lnk:active,.lnk:hover{background:var(--surface-hover);border-color:rgba(255,255,255,0.15)}
 
+/* Monochrome icon box — no color, no gradient */
 .ico{
-  width:42px;height:42px;border-radius:10px;
+  width:42px;height:42px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
   display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;font-size:20px;
+  flex-shrink:0;
+  color:#fff;
+  opacity:.9;
 }
+
 .lnk-body{flex:1;min-width:0}
 .lnk-title{font-size:15px;font-weight:600}
-.lnk-sub{font-size:12px;color:var(--muted2);margin-top:2px}
+.lnk-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* Disabled/placeholder style */
+.lnk-disabled{opacity:.45;cursor:default}
+.lnk-disabled:hover,.lnk-disabled:active{background:var(--surface);border-color:var(--border)}
 
 /* Toast notification */
 .toast{
   position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
-  background:#222;border:1px solid #444;border-radius:10px;
+  background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);border-radius:10px;
   padding:12px 20px;font-size:13px;color:var(--text);
   white-space:nowrap;pointer-events:none;
   transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .25s;
@@ -136,11 +173,8 @@ var items = [
     subtitle: 'Limited-time weekly special',
     icon: '🍜',
     url: 'https://rim.bakudanramen.com/',
-    featured: true,
-    enabled: true,
-    openInNewTab: true,
-    destinationType: 'campaign_landing',
-    sortOrder: 1
+    featured: true, enabled: true, openInNewTab: true,
+    destinationType: 'campaign_landing', sortOrder: 1
   },
   {
     id: 'locations',
@@ -148,10 +182,8 @@ var items = [
     subtitle: 'RIM · Stone Oak · Bandera',
     icon: '📍',
     url: BASE + '/locations',
-    featured: false,
-    enabled: true,
-    destinationType: 'location_selector',
-    sortOrder: 2
+    featured: false, enabled: true,
+    destinationType: 'location_selector', sortOrder: 2
   },
   {
     id: 'rewards',
@@ -159,11 +191,8 @@ var items = [
     subtitle: 'Earn Double on Midweek',
     icon: '🎟️',
     url: 'https://www.toasttab.com/bakudanramen/rewardsSignup',
-    featured: false,
-    enabled: true,
-    openInNewTab: true,
-    destinationType: 'toast_rewards',
-    sortOrder: 3
+    featured: false, enabled: true, openInNewTab: true,
+    destinationType: 'toast_rewards', sortOrder: 3
   },
   {
     id: 'order',
@@ -171,10 +200,8 @@ var items = [
     subtitle: 'Choose the best location near you',
     icon: '🛵',
     url: BASE + '/order',
-    featured: false,
-    enabled: true,
-    destinationType: 'geo_smart_order',
-    sortOrder: 4
+    featured: false, enabled: true,
+    destinationType: 'geo_smart_order', sortOrder: 4
   },
   {
     id: 'reservation',
@@ -182,8 +209,7 @@ var items = [
     subtitle: 'Book your table',
     icon: '📅',
     url: '#',
-    featured: false,
-    enabled: false,
+    featured: false, enabled: false,
     destinationType: 'reservation_provider',
     placeholderMessage: 'Reservation link coming soon',
     sortOrder: 5
@@ -194,8 +220,7 @@ var items = [
     subtitle: 'Give the gift of Bakudan',
     icon: '🎁',
     url: '#',
-    featured: false,
-    enabled: false,
+    featured: false, enabled: false,
     destinationType: 'toast_gift_cards',
     placeholderMessage: 'Gift card link coming soon',
     sortOrder: 6
@@ -206,11 +231,8 @@ var items = [
     subtitle: 'Share your Bakudan moment',
     icon: '📸',
     url: 'https://www.instagram.com/bakudanramen',
-    featured: false,
-    enabled: true,
-    openInNewTab: true,
-    destinationType: 'instagram_ugc',
-    sortOrder: 7
+    featured: false, enabled: true, openInNewTab: true,
+    destinationType: 'instagram_ugc', sortOrder: 7
   }
 ];
 
@@ -225,10 +247,7 @@ function showToast(msg) {
 
 function handleClick(item, e) {
   e.preventDefault();
-  if (!item.enabled) {
-    showToast(item.placeholderMessage || 'Coming soon');
-    return;
-  }
+  if (!item.enabled) { showToast(item.placeholderMessage || 'Coming soon'); return; }
   if (item.openInNewTab) {
     window.open(item.url, '_blank', 'noopener,noreferrer');
   } else {
@@ -236,37 +255,36 @@ function handleClick(item, e) {
   }
 }
 
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function render() {
   var sorted = items.slice().sort(function(a,b){ return a.sortOrder - b.sortOrder; });
   var container = document.getElementById('links');
+
   sorted.forEach(function(item) {
     if (item.featured) {
-      var btn = document.createElement('a');
-      btn.className = 'btn-featured';
-      btn.href = item.enabled ? item.url : '#';
-      if (item.openInNewTab && item.enabled) { btn.target = '_blank'; btn.rel = 'noopener noreferrer'; }
-      btn.innerHTML = '<div class="btn-featured-title">' + esc(item.icon) + ' ' + esc(item.title) + '</div>'
-        + '<div class="btn-featured-sub">' + esc(item.subtitle) + '</div>';
-      btn.addEventListener('click', function(e){ if (!item.enabled){ e.preventDefault(); showToast(item.placeholderMessage || 'Coming soon'); } });
-      container.appendChild(btn);
+      var a = document.createElement('a');
+      a.className = 'btn-primary';
+      a.href = item.enabled ? item.url : '#';
+      if (item.openInNewTab && item.enabled) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.innerHTML = '<div class="btn-primary-title">' + esc(item.icon) + ' ' + esc(item.title) + '</div>'
+        + '<div class="btn-primary-sub">' + esc(item.subtitle) + '</div>';
+      container.appendChild(a);
     } else {
       var btn = document.createElement('button');
-      btn.className = 'lnk';
       btn.type = 'button';
+      btn.className = 'lnk' + (item.enabled ? '' : ' lnk-disabled');
       btn.innerHTML = '<div class="ico">' + esc(item.icon) + '</div>'
         + '<div class="lnk-body">'
         + '<div class="lnk-title">' + esc(item.title) + '</div>'
         + '<div class="lnk-sub">' + esc(item.subtitle) + '</div>'
         + '</div>';
       btn.addEventListener('click', function(e){ handleClick(item, e); });
-      if (!item.enabled) { btn.style.opacity = '.55'; }
       container.appendChild(btn);
     }
   });
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 render();
