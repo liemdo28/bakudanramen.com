@@ -9,19 +9,19 @@
 <meta property="og:description" content="Authentic Japanese Ramen · San Antonio, TX">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.bakudanramen.com/links/">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#000000">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0d0d;
-  --card:#191919;
-  --card-hover:#212121;
-  --border:#282828;
-  --red:#e01c1c;
-  --red-dark:#c01414;
-  --text:#ffffff;
-  --muted:#666;
-  --muted2:#888;
+  --bg:#000;
+  --card:#111;
+  --card-hover:#1a1a1a;
+  --border:rgba(255,255,255,0.08);
+  --red:#e11d2e;
+  --red-dark:#b91c1c;
+  --text:#fff;
+  --muted:#9ca3af;
+  --muted2:#9ca3af;
   --r:14px;
 }
 html{background:var(--bg)}
@@ -90,22 +90,23 @@ body{
 .store-a{
   display:flex;align-items:center;gap:14px;
   padding:14px 16px;
-  background:#2a0808;
-  border:1.5px solid #4a1212;
+  background:var(--card);
+  border:1px solid var(--border);
   border-radius:11px;
   color:#fff;text-decoration:none;
-  transition:background .15s;
+  transition:background .15s,border-color .15s;
   -webkit-tap-highlight-color:transparent;
 }
-.store-a:active,.store-a:hover{background:#380d0d}
+.store-a:active,.store-a:hover{background:var(--card-hover);border-color:rgba(255,255,255,0.15)}
 .store-ico{
   width:38px;height:38px;
-  background:var(--red);border-radius:9px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+  border-radius:9px;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;font-size:18px;
 }
 .store-name{font-size:14px;font-weight:700}
-.store-addr{font-size:11px;color:#a87070;margin-top:2px}
+.store-addr{font-size:11px;color:var(--muted);margin-top:2px}
 
 /* ── Dark link cards ── */
 .lnk{
@@ -118,16 +119,13 @@ body{
   -webkit-tap-highlight-color:transparent;
   transition:background .15s,border-color .15s;
 }
-.lnk:active,.lnk:hover{background:var(--card-hover);border-color:#3a3a3a}
+.lnk:active,.lnk:hover{background:var(--card-hover);border-color:rgba(255,255,255,0.15)}
 .ico{
   width:42px;height:42px;border-radius:10px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
 }
-.ico-globe{background:#2563eb}
-.ico-ig{background:radial-gradient(circle at 30% 107%,#fdf497 0%,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285aeb 90%)}
-.ico-fb{background:#1877f2}
-.ico-pin{background:#16a34a}
 .lnk-body{flex:1}
 .lnk-title{font-size:15px;font-weight:600}
 .lnk-sub{font-size:12px;color:var(--muted2);margin-top:2px}
@@ -198,7 +196,7 @@ footer a{color:var(--muted);text-decoration:none}
 
     <!-- MAIN WEBSITE -->
     <a class="lnk" href="https://www.bakudanramen.com/" target="_blank" rel="noopener noreferrer" onclick="track('website')">
-      <div class="ico ico-globe">
+      <div class="ico">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -212,7 +210,7 @@ footer a{color:var(--muted);text-decoration:none}
 
     <!-- INSTAGRAM -->
     <a class="lnk" href="https://www.instagram.com/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('instagram')">
-      <div class="ico ico-ig">
+      <div class="ico">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
           <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
         </svg>
@@ -225,7 +223,7 @@ footer a{color:var(--muted);text-decoration:none}
 
     <!-- FACEBOOK -->
     <a class="lnk" href="https://www.facebook.com/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('facebook')">
-      <div class="ico ico-fb">
+      <div class="ico">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
         </svg>
@@ -240,7 +238,7 @@ footer a{color:var(--muted);text-decoration:none}
     <div class="sec-lbl">Locations &amp; Directions</div>
 
     <a class="lnk" href="https://maps.google.com/?q=17619+La+Cantera+Pkwy+%23208,+San+Antonio,+TX+78257" target="_blank" rel="noopener noreferrer" onclick="track('loc-rim')">
-      <div class="ico ico-pin">
+      <div class="ico">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
         </svg>
@@ -252,7 +250,7 @@ footer a{color:var(--muted);text-decoration:none}
     </a>
 
     <a class="lnk" href="https://maps.google.com/?q=22506+US-281+%23106,+San+Antonio,+TX+78258" target="_blank" rel="noopener noreferrer" onclick="track('loc-stoneoak')">
-      <div class="ico ico-pin">
+      <div class="ico">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
         </svg>
@@ -264,7 +262,7 @@ footer a{color:var(--muted);text-decoration:none}
     </a>
 
     <a class="lnk" href="https://maps.google.com/?q=11309+Bandera+Rd+%23111,+San+Antonio,+TX+78250" target="_blank" rel="noopener noreferrer" onclick="track('loc-bandera')">
-      <div class="ico ico-pin">
+      <div class="ico">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
         </svg>
