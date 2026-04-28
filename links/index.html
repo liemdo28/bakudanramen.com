@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bakudan Ramen — Links</title>
+<meta name="description" content="Quick links for Bakudan Ramen — order online, view menu, find locations, and more.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f172a;
+    --card:     #1e293b;
+    --border:   #334155;
+    --red:      #dc2626;
+    --red-hover:#b91c1c;
+    --text:     #f1f5f9;
+    --muted:    #94a3b8;
+    --featured: #fde68a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 80px;
+  }
+
+  #loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-top: 80px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error-state {
+    display: none;
+    text-align: center;
+    margin-top: 80px;
+    max-width: 360px;
+  }
+  #error-state h2 { color: var(--red); margin-bottom: 8px; }
+  #error-state p  { color: var(--muted); font-size: 14px; }
+
+  #page-content { display: none; width: 100%; max-width: 480px; }
+
+  .brand {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .brand-kanji {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 20px rgba(220,38,38,.4));
+  }
+  .brand-name {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .brand-headline {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .btn-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .bkdn-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform .15s, background .15s, box-shadow .15s;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+  }
+  .bkdn-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    border-color: var(--red);
+  }
+  .bkdn-btn.featured {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+  .bkdn-btn.featured:hover { background: var(--red-hover); border-color: var(--red-hover); }
+
+  .store-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .store-tabs::-webkit-scrollbar { display: none; }
+  .store-tab {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .store-tab.active,
+  .store-tab:hover {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+
+  footer {
+    margin-top: 48px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  footer a { color: var(--muted); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Loading…</span>
+</div>
+
+<div id="error-state">
+  <h2>Page not found</h2>
+  <p>This link hub page doesn't exist or is currently unavailable.</p>
+</div>
+
+<div id="page-content">
+  <div class="brand">
+    <div class="brand-kanji">爆</div>
+    <div class="brand-name">Bakudan Ramen</div>
+    <div class="brand-headline" id="page-headline"></div>
+  </div>
+
+  <div class="store-tabs" id="store-tabs" style="display:none"></div>
+  <div class="btn-list" id="btn-list"></div>
+
+  <footer id="page-footer">
+    <p>&copy; Bakudan Ramen &mdash; San Antonio, TX</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var API   = '/api/public';
+  var slug  = (location.pathname.split('/links/')[1] || '').replace(/\/$/, '') || null;
+
+  function show(el) { el.style.display = ''; }
+  function hide(el) { el.style.display = 'none'; }
+
+  var ICONS = {
+    order:      '🍜', website:    '🌐', email:     '✉️', events:   '🎉',
+    instagram:  '📸', facebook:   '👍', directions:'📍', phone:    '📞',
+    menu:       '📋', gift:       '🎁', ticket:    '🎟️', external: '↗️',
+    blog:       '📝', social:     '💬',
+  };
+
+  function iconFor(key) { return ICONS[key] || ''; }
+
+  function renderButtons(buttons) {
+    var list = document.getElementById('btn-list');
+    if (!buttons.length) {
+      list.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:14px;padding:32px 0">No links yet.</p>';
+      return;
+    }
+    list.innerHTML = buttons.map(function (b) {
+      var icon = b.icon ? iconFor(b.icon) : '';
+      return '<a class="bkdn-btn' + (b.is_featured ? ' featured' : '') + '" href="' + escHtml(b.url) + '"'
+        + ' target="_blank" rel="noopener noreferrer"'
+        + ' onclick="track(' + b.id + ')">'
+        + (icon ? '<span>' + icon + '</span>' : '')
+        + '<span>' + escHtml(b.label) + '</span>'
+        + '</a>';
+    }).join('');
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  window.track = function (buttonId) {
+    fetch(API + '/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ button_id: buttonId, event_type: 'click' }),
+    }).catch(function () {});
+  };
+
+  function loadPage(targetSlug) {
+    fetch(API + '/pages/' + targetSlug)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        hide(document.getElementById('loading'));
+        if (!data.ok) { show(document.getElementById('error-state')); return; }
+        var page = data.data.page;
+        document.title = page.title + ' — Bakudan Ramen';
+        var hl = document.getElementById('page-headline');
+        hl.textContent = page.headline || 'Bold Flavor. Modern Japanese Soul.';
+        renderButtons(data.data.buttons);
+        show(document.getElementById('page-content'));
+      })
+      .catch(function () {
+        hide(document.getElementById('loading'));
+        show(document.getElementById('error-state'));
+      });
+  }
+
+  function loadAllPages() {
+    // No slug — try to load all active pages and show store tabs
+    fetch(API + '/pages/all').then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.ok || !data.data.pages || !data.data.pages.length) {
+          hide(document.getElementById('loading'));
+          show(document.getElementById('error-state'));
+          return;
+        }
+        var pages = data.data.pages;
+        if (pages.length === 1) {
+          loadPage(pages[0].slug);
+          return;
+        }
+        var tabs = document.getElementById('store-tabs');
+        tabs.style.display = 'flex';
+        var first = pages[0];
+        tabs.innerHTML = pages.map(function(p, i) {
+          return '<button class="store-tab' + (i === 0 ? ' active' : '') + '" onclick="switchTab(this, \'' + escHtml(p.slug) + '\')">' + escHtml(p.title) + '</button>';
+        }).join('');
+        hide(document.getElementById('loading'));
+        show(document.getElementById('page-content'));
+        loadPage(first.slug);
+      })
+      .catch(function() {
+        hide(document.getElementById('loading'));
+        show(document.getElementById('error-state'));
+      });
+  }
+
+  window.switchTab = function(btn, targetSlug) {
+    document.querySelectorAll('.store-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('btn-list').innerHTML = '<div style="text-align:center;padding:24px"><div class="spinner" style="margin:auto"></div></div>';
+    loadPage(targetSlug);
+  };
+
+  if (slug) {
+    loadPage(slug);
+  } else {
+    loadAllPages();
+  }
+})();
+</script>
+</body>
+</html>

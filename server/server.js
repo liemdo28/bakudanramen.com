@@ -65,10 +65,11 @@ app.get('/api/config', (req, res) => {
 });
 
 /* ── API Routes ──────────────────────────────────── */
-app.use('/api/auth',    require('./routes/auth'));
-app.use('/api/links',   require('./routes/links'));
-app.use('/api/blog',    require('./routes/blog'));
-app.use('/api/public',  require('./routes/public'));
+app.use('/api/auth',   require('./routes/auth'));
+app.use('/api/blog',   require('./routes/blog'));
+app.use('/api/public', require('./routes/public'));
+// links router mounted at /api so frontend calls /api/admin/* resolve correctly
+app.use('/api',        require('./routes/links'));
 
 /* ── Admin SPA ───────────────────────────────────── */
 // Serve the SPA shell for all /links-admin/* paths

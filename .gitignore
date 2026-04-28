@@ -30,3 +30,9 @@ build/
 
 # Logs
 *.log
+
+# Runtime data (SQLite database and uploaded files)
+data/
+uploads/
+*.db
+*.sqlite
