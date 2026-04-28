@@ -1,10 +1,21 @@
 Options -Indexes
 RewriteEngine On
 
-# /links-admin (no trailing slash) → /links-admin/ (permanent redirect)
-RewriteRule ^links-admin$ /links-admin/ [R=301,L]
+# Pass Authorization header to PHP (required for JWT)
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# SPA fallback: /links-admin/* (non-file paths) → links-admin/index.html
+# /api/* → PHP (chỉ khi file không tồn tại - tránh infinite loop)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api/(.*)$ /api/index.php [L,QSA]
+
+# /links-admin SPA
+RewriteRule ^links-admin$ /links-admin/ [R=301,L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^links-admin/(.*)$ /links-admin/index.html [L]
+
+# /links SPA
+RewriteRule ^links$ /links/ [R=301,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^links/(.*)$ /links/index.html [L]
