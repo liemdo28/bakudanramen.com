@@ -2,293 +2,305 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bakudan Ramen — Links</title>
-<meta name="description" content="Quick links for Bakudan Ramen — order online, view menu, find locations, and more.">
+<meta name="description" content="Order online, find locations, and follow Bakudan Ramen — Authentic Japanese Ramen in San Antonio.">
+<meta property="og:title" content="Bakudan Ramen">
+<meta property="og:description" content="Authentic Japanese Ramen · San Antonio, TX">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.bakudanramen.com/links/">
+<meta name="theme-color" content="#0d0d0d">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;
+  --card:#191919;
+  --card-hover:#212121;
+  --border:#282828;
+  --red:#e01c1c;
+  --red-dark:#c01414;
+  --text:#ffffff;
+  --muted:#666;
+  --muted2:#888;
+  --r:14px;
+}
+html{background:var(--bg)}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:48px 20px 64px;
+}
+.wrap{width:100%;max-width:400px}
 
-  :root {
-    --bg:       #0f172a;
-    --card:     #1e293b;
-    --border:   #334155;
-    --red:      #dc2626;
-    --red-hover:#b91c1c;
-    --text:     #f1f5f9;
-    --muted:    #94a3b8;
-    --featured: #fde68a;
-  }
+/* ── Header ── */
+.hdr{text-align:center;margin-bottom:36px}
+.kanji{
+  width:82px;height:82px;
+  background:var(--red);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 18px;
+  font-size:42px;line-height:1;
+  box-shadow:0 0 48px rgba(224,28,28,.38);
+}
+.brand-name{
+  font-size:20px;font-weight:800;
+  letter-spacing:.14em;text-transform:uppercase;
+}
+.divider{width:36px;height:2px;background:var(--red);margin:10px auto}
+.brand-sub{
+  font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted2);
+}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 40px 16px 80px;
-  }
+/* ── Links stack ── */
+.links{display:flex;flex-direction:column;gap:10px}
 
-  #loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    margin-top: 80px;
-    color: var(--muted);
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--border);
-    border-top-color: var(--red);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── Order Online CTA ── */
+.btn-order{
+  width:100%;border:none;cursor:pointer;
+  background:var(--red);
+  border-radius:var(--r);
+  padding:20px 20px 18px;
+  text-align:center;
+  color:#fff;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s,transform .1s;
+  user-select:none;
+}
+.btn-order:active{transform:scale(.98);background:var(--red-dark)}
+.btn-order-title{font-size:18px;font-weight:700;margin-bottom:5px}
+.btn-order-sub{font-size:12px;opacity:.78;letter-spacing:.01em}
 
-  #error-state {
-    display: none;
-    text-align: center;
-    margin-top: 80px;
-    max-width: 360px;
-  }
-  #error-state h2 { color: var(--red); margin-bottom: 8px; }
-  #error-state p  { color: var(--muted); font-size: 14px; }
+/* ── Store picker ── */
+.store-picker{
+  display:none;flex-direction:column;gap:8px;
+  margin-top:8px;
+  animation:fd .2s ease;
+}
+.store-picker.open{display:flex}
+@keyframes fd{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 
-  #page-content { display: none; width: 100%; max-width: 480px; }
+.store-a{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  background:#2a0808;
+  border:1.5px solid #4a1212;
+  border-radius:11px;
+  color:#fff;text-decoration:none;
+  transition:background .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.store-a:active,.store-a:hover{background:#380d0d}
+.store-ico{
+  width:38px;height:38px;
+  background:var(--red);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:18px;
+}
+.store-name{font-size:14px;font-weight:700}
+.store-addr{font-size:11px;color:#a87070;margin-top:2px}
 
-  .brand {
-    text-align: center;
-    margin-bottom: 32px;
-  }
-  .brand-kanji {
-    font-size: 64px;
-    line-height: 1;
-    margin-bottom: 8px;
-    filter: drop-shadow(0 0 20px rgba(220,38,38,.4));
-  }
-  .brand-name {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-  }
-  .brand-headline {
-    font-size: 14px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
+/* ── Dark link cards ── */
+.lnk{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  color:var(--text);text-decoration:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s,border-color .15s;
+}
+.lnk:active,.lnk:hover{background:var(--card-hover);border-color:#3a3a3a}
+.ico{
+  width:42px;height:42px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.ico-globe{background:#2563eb}
+.ico-ig{background:radial-gradient(circle at 30% 107%,#fdf497 0%,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285aeb 90%)}
+.ico-fb{background:#1877f2}
+.ico-pin{background:#16a34a}
+.lnk-body{flex:1}
+.lnk-title{font-size:15px;font-weight:600}
+.lnk-sub{font-size:12px;color:var(--muted2);margin-top:2px}
 
-  .btn-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-  }
+/* ── Section label ── */
+.sec-lbl{
+  font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);
+  padding:4px 2px 0;margin-top:4px;
+}
 
-  .bkdn-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 16px 24px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: transform .15s, background .15s, box-shadow .15s;
-    border: 1.5px solid var(--border);
-    background: var(--card);
-    color: var(--text);
-    cursor: pointer;
-    width: 100%;
-    text-align: center;
-  }
-  .bkdn-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.4);
-    border-color: var(--red);
-  }
-  .bkdn-btn.featured {
-    background: var(--red);
-    border-color: var(--red);
-    color: #fff;
-  }
-  .bkdn-btn.featured:hover { background: var(--red-hover); border-color: var(--red-hover); }
+/* ── Coming soon ── */
+.coming-soon{
+  padding:15px;
+  border:1px dashed var(--border);
+  border-radius:var(--r);
+  text-align:center;
+  font-size:13px;color:var(--muted);
+}
 
-  .store-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 24px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-  }
-  .store-tabs::-webkit-scrollbar { display: none; }
-  .store-tab {
-    padding: 8px 16px;
-    border-radius: 20px;
-    border: 1.5px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all .15s;
-  }
-  .store-tab.active,
-  .store-tab:hover {
-    background: var(--red);
-    border-color: var(--red);
-    color: #fff;
-  }
-
-  footer {
-    margin-top: 48px;
-    text-align: center;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  footer a { color: var(--muted); text-decoration: underline; }
+/* ── Footer ── */
+footer{margin-top:48px;text-align:center;font-size:12px;color:var(--muted);line-height:1.8}
+footer a{color:var(--muted);text-decoration:none}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div id="loading">
-  <div class="spinner"></div>
-  <span>Loading…</span>
-</div>
-
-<div id="error-state">
-  <h2>Page not found</h2>
-  <p>This link hub page doesn't exist or is currently unavailable.</p>
-</div>
-
-<div id="page-content">
-  <div class="brand">
-    <div class="brand-kanji">爆</div>
+  <div class="hdr">
+    <div class="kanji">爆</div>
     <div class="brand-name">Bakudan Ramen</div>
-    <div class="brand-headline" id="page-headline"></div>
+    <div class="divider"></div>
+    <div class="brand-sub">Authentic Japanese Ramen &middot; San Antonio</div>
   </div>
 
-  <div class="store-tabs" id="store-tabs" style="display:none"></div>
-  <div class="btn-list" id="btn-list"></div>
+  <div class="links">
 
-  <footer id="page-footer">
-    <p>&copy; Bakudan Ramen &mdash; San Antonio, TX</p>
+    <!-- ORDER ONLINE -->
+    <div>
+      <button class="btn-order" onclick="toggleOrder(this)" aria-expanded="false">
+        <div class="btn-order-title">Order Online</div>
+        <div class="btn-order-sub">Pickup &middot; Delivery &middot; Catering &mdash; tap to choose location</div>
+      </button>
+      <div class="store-picker" id="store-picker">
+        <a class="store-a" href="https://order.toasttab.com/online/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('order-rim')">
+          <div class="store-ico">🏮</div>
+          <div>
+            <div class="store-name">The Rim</div>
+            <div class="store-addr">17619 La Cantera Pkwy #208</div>
+          </div>
+        </a>
+        <a class="store-a" href="https://order.toasttab.com/online/bakudan-ramen-stone-oak" target="_blank" rel="noopener noreferrer" onclick="track('order-stoneoak')">
+          <div class="store-ico">🏮</div>
+          <div>
+            <div class="store-name">Stone Oak</div>
+            <div class="store-addr">22506 US Hwy 281 N #106</div>
+          </div>
+        </a>
+        <a class="store-a" href="https://order.toasttab.com/online/bakudan-bandera" target="_blank" rel="noopener noreferrer" onclick="track('order-bandera')">
+          <div class="store-ico">🏮</div>
+          <div>
+            <div class="store-name">Bandera</div>
+            <div class="store-addr">11309 Bandera Rd #111</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- MAIN WEBSITE -->
+    <a class="lnk" href="https://www.bakudanramen.com/" target="_blank" rel="noopener noreferrer" onclick="track('website')">
+      <div class="ico ico-globe">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      </div>
+      <div class="lnk-body">
+        <div class="lnk-title">Visit Main Website</div>
+        <div class="lnk-sub">Menu, locations, story</div>
+      </div>
+    </a>
+
+    <!-- INSTAGRAM -->
+    <a class="lnk" href="https://www.instagram.com/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('instagram')">
+      <div class="ico ico-ig">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+        </svg>
+      </div>
+      <div class="lnk-body">
+        <div class="lnk-title">Instagram</div>
+        <div class="lnk-sub">@bakudanramen</div>
+      </div>
+    </a>
+
+    <!-- FACEBOOK -->
+    <a class="lnk" href="https://www.facebook.com/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('facebook')">
+      <div class="ico ico-fb">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+      </div>
+      <div class="lnk-body">
+        <div class="lnk-title">Facebook</div>
+        <div class="lnk-sub">Bakudan Ramen</div>
+      </div>
+    </a>
+
+    <!-- LOCATIONS -->
+    <div class="sec-lbl">Locations &amp; Directions</div>
+
+    <a class="lnk" href="https://maps.google.com/?q=17619+La+Cantera+Pkwy+%23208,+San+Antonio,+TX+78257" target="_blank" rel="noopener noreferrer" onclick="track('loc-rim')">
+      <div class="ico ico-pin">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+      <div class="lnk-body">
+        <div class="lnk-title">The Rim</div>
+        <div class="lnk-sub">17619 La Cantera Pkwy #208 &middot; Get Directions</div>
+      </div>
+    </a>
+
+    <a class="lnk" href="https://maps.google.com/?q=22506+US-281+%23106,+San+Antonio,+TX+78258" target="_blank" rel="noopener noreferrer" onclick="track('loc-stoneoak')">
+      <div class="ico ico-pin">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+      <div class="lnk-body">
+        <div class="lnk-title">Stone Oak</div>
+        <div class="lnk-sub">22506 US Hwy 281 N #106 &middot; Get Directions</div>
+      </div>
+    </a>
+
+    <a class="lnk" href="https://maps.google.com/?q=11309+Bandera+Rd+%23111,+San+Antonio,+TX+78250" target="_blank" rel="noopener noreferrer" onclick="track('loc-bandera')">
+      <div class="ico ico-pin">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+      <div class="lnk-body">
+        <div class="lnk-title">Bandera</div>
+        <div class="lnk-sub">11309 Bandera Rd #111 &middot; Get Directions</div>
+      </div>
+    </a>
+
+    <!-- COMING SOON -->
+    <div class="coming-soon">Merchandise &middot; Coming Soon</div>
+
+  </div>
+
+  <footer>
+    <p>&copy; 2026 Bakudan Ramen</p>
+    <p><a href="https://www.bakudanramen.com">bakudanramen.com</a></p>
   </footer>
+
 </div>
 
 <script>
-(function () {
-  var API   = '/api/public';
-  var slug  = (location.pathname.split('/links/')[1] || '').replace(/\/$/, '') || null;
+function toggleOrder(btn) {
+  var p = document.getElementById('store-picker');
+  var open = p.classList.toggle('open');
+  btn.setAttribute('aria-expanded', String(open));
+}
 
-  function show(el) { el.style.display = ''; }
-  function hide(el) { el.style.display = 'none'; }
-
-  var ICONS = {
-    order:      '🍜', website:    '🌐', email:     '✉️', events:   '🎉',
-    instagram:  '📸', facebook:   '👍', directions:'📍', phone:    '📞',
-    menu:       '📋', gift:       '🎁', ticket:    '🎟️', external: '↗️',
-    blog:       '📝', social:     '💬',
-  };
-
-  function iconFor(key) { return ICONS[key] || ''; }
-
-  function renderButtons(buttons) {
-    var list = document.getElementById('btn-list');
-    if (!buttons.length) {
-      list.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:14px;padding:32px 0">No links yet.</p>';
-      return;
-    }
-    list.innerHTML = buttons.map(function (b) {
-      var icon = b.icon ? iconFor(b.icon) : '';
-      return '<a class="bkdn-btn' + (b.is_featured ? ' featured' : '') + '" href="' + escHtml(b.url) + '"'
-        + ' target="_blank" rel="noopener noreferrer"'
-        + ' onclick="track(' + b.id + ')">'
-        + (icon ? '<span>' + icon + '</span>' : '')
-        + '<span>' + escHtml(b.label) + '</span>'
-        + '</a>';
-    }).join('');
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
-  window.track = function (buttonId) {
-    fetch(API + '/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ button_id: buttonId, event_type: 'click' }),
-    }).catch(function () {});
-  };
-
-  function loadPage(targetSlug) {
-    fetch(API + '/pages/' + targetSlug)
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        hide(document.getElementById('loading'));
-        if (!data.ok) { show(document.getElementById('error-state')); return; }
-        var page = data.data.page;
-        document.title = page.title + ' — Bakudan Ramen';
-        var hl = document.getElementById('page-headline');
-        hl.textContent = page.headline || 'Bold Flavor. Modern Japanese Soul.';
-        renderButtons(data.data.buttons);
-        show(document.getElementById('page-content'));
-      })
-      .catch(function () {
-        hide(document.getElementById('loading'));
-        show(document.getElementById('error-state'));
-      });
-  }
-
-  function loadAllPages() {
-    // No slug — try to load all active pages and show store tabs
-    fetch(API + '/pages/all').then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (!data.ok || !data.data.pages || !data.data.pages.length) {
-          hide(document.getElementById('loading'));
-          show(document.getElementById('error-state'));
-          return;
-        }
-        var pages = data.data.pages;
-        if (pages.length === 1) {
-          loadPage(pages[0].slug);
-          return;
-        }
-        var tabs = document.getElementById('store-tabs');
-        tabs.style.display = 'flex';
-        var first = pages[0];
-        tabs.innerHTML = pages.map(function(p, i) {
-          return '<button class="store-tab' + (i === 0 ? ' active' : '') + '" onclick="switchTab(this, \'' + escHtml(p.slug) + '\')">' + escHtml(p.title) + '</button>';
-        }).join('');
-        hide(document.getElementById('loading'));
-        show(document.getElementById('page-content'));
-        loadPage(first.slug);
-      })
-      .catch(function() {
-        hide(document.getElementById('loading'));
-        show(document.getElementById('error-state'));
-      });
-  }
-
-  window.switchTab = function(btn, targetSlug) {
-    document.querySelectorAll('.store-tab').forEach(function(t) { t.classList.remove('active'); });
-    btn.classList.add('active');
-    document.getElementById('btn-list').innerHTML = '<div style="text-align:center;padding:24px"><div class="spinner" style="margin:auto"></div></div>';
-    loadPage(targetSlug);
-  };
-
-  if (slug) {
-    loadPage(slug);
-  } else {
-    loadAllPages();
-  }
-})();
+function track(label) {
+  fetch('/api/public/track', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({button_id: label, event_type: 'click'}),
+  }).catch(function(){});
+}
 </script>
 </body>
 </html>
