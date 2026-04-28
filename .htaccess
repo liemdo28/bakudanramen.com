@@ -4,9 +4,25 @@ RewriteEngine On
 # Pass Authorization header to PHP (required for JWT)
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# /api/* → PHP (chỉ khi file không tồn tại - tránh infinite loop)
+# /api/* → PHP (only when file does not exist - prevents infinite loop)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^api/(.*)$ /api/index.php [L,QSA]
+
+# /api/sitemap.xml → PHP
+RewriteRule ^api/sitemap\.xml$ /api/index.php [L,QSA]
+
+# /uploads/* → serve static files directly (no rewrite)
+RewriteRule ^uploads/(.*)$ - [L]
+
+# /blog/* → redirect to /stories/* (301 permanent)
+RewriteRule ^blog/(.*)$ /stories/$1 [R=301,L]
+RewriteRule ^blog$ /stories/ [R=301,L]
+
+# /stories SPA
+RewriteRule ^stories$ /stories/ [R=301,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^stories/(.*)$ /stories/index.html [L]
 
 # /links-admin SPA
 RewriteRule ^links-admin$ /links-admin/ [R=301,L]

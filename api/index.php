@@ -7,11 +7,20 @@
 declare(strict_types=1);
 
 // ── Config ────────────────────────────────────────────────────────────
-define('DB_PATH',    '/home/hoale24new/bakudan-app/data/bakudan.db');
-define('JWT_SECRET', getenv('JWT_SECRET') ?: 'bakudan-dev-secret-change-in-production');
-define('JWT_TTL',    7 * 24 * 3600);
+define('DB_PATH',      '/home/hoale24new/bakudan-app/data/bakudan.db');
+define('UPLOAD_DIR',   '/home/hoale24new/bakudanramen.com/uploads/blogs/');
+define('UPLOAD_URL',   '/uploads/blogs/');
+define('JWT_SECRET',   getenv('JWT_SECRET') ?: 'bakudan-dev-secret-change-in-production');
+define('JWT_TTL',      7 * 24 * 3600);
+define('SITE_URL',     'https://bakudanramen.com');
 
-header('Content-Type: application/json');
+// ── Handle uploads before JSON Content-Type header ────────────────────
+$_rawUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$_isUpload = (preg_replace('#^/api#', '', $_rawUri) === '/upload');
+if (!$_isUpload) {
+    header('Content-Type: application/json');
+}
+
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Authorization, Content-Type');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -129,6 +138,21 @@ function db_migrate(SQLite3 $db): void {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     ");
+
+    // Add new blog columns (idempotent — ignores duplicate column errors)
+    $new_cols = [
+        "ALTER TABLE blog_posts ADD COLUMN category TEXT",
+        "ALTER TABLE blog_posts ADD COLUMN tags TEXT",
+        "ALTER TABLE blog_posts ADD COLUMN seo_title TEXT",
+        "ALTER TABLE blog_posts ADD COLUMN seo_description TEXT",
+        "ALTER TABLE blog_posts ADD COLUMN og_image TEXT",
+        "ALTER TABLE blog_posts ADD COLUMN tiptap_json TEXT",
+        "ALTER TABLE blog_posts ADD COLUMN reading_time INTEGER NOT NULL DEFAULT 0",
+    ];
+    foreach ($new_cols as $sql) {
+        try { $db->exec($sql); } catch (Exception $e) {}
+    }
+
     // Seed admin
     $row = $db->querySingle("SELECT COUNT(*) FROM users");
     if ($row == 0) {
@@ -145,7 +169,7 @@ function db_migrate(SQLite3 $db): void {
     if ($row == 0) {
         $ins = $db->prepare("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)");
         foreach ([
-            ['site_name','Bakudan Ramen'],['site_url','https://bakudanramen.com'],
+            ['site_name','Bakudan Ramen'],['site_url',SITE_URL],
             ['theme_primary','#dc2626'],['theme_bg','#0f172a'],
             ['footer_text','© Bakudan Ramen. All rights reserved.'],
             ['show_subscriber_form','0'],
@@ -178,11 +202,13 @@ $BODY    = json_decode(file_get_contents('php://input'), true) ?? [];
 $QUERY   = $_GET;
 
 function json_ok(array $data = [], int $code = 200): void {
+    header('Content-Type: application/json');
     http_response_code($code);
     echo json_encode(['ok'=>true,'data'=>$data]);
     exit;
 }
 function json_err(string $msg, int $code = 400): void {
+    header('Content-Type: application/json');
     http_response_code($code);
     echo json_encode(['ok'=>false,'error'=>$msg]);
     exit;
@@ -190,7 +216,6 @@ function json_err(string $msg, int $code = 400): void {
 
 // ── Auth middleware ───────────────────────────────────────────────────
 function auth(): array {
-    // DreamHost/Apache may strip Authorization — also check REDIRECT_ prefix
     $header = $_SERVER['HTTP_AUTHORIZATION']
            ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
            ?? (function_exists('apache_request_headers') ? (apache_request_headers()['Authorization'] ?? '') : '');
@@ -209,7 +234,6 @@ $MGR  = ['super_admin','marketing_manager'];
 $EDIT = ['super_admin','marketing_manager','store_manager'];
 
 // ── Router ────────────────────────────────────────────────────────────
-// Strip /api prefix
 $path = preg_replace('#^/api#', '', $URI);
 $path = rtrim($path, '/') ?: '/';
 $segs = explode('/', trim($path, '/'));
@@ -239,7 +263,7 @@ if ($path === '/auth/change-password' && $METHOD === 'POST') {
 
 // ── CONFIG ────────────────────────────────────────────────────────────
 if ($path === '/config' && $METHOD === 'GET') {
-    json_ok(['version'=>'1.0.0','siteUrl'=>'https://bakudanramen.com',
+    json_ok(['version'=>'2.0.0','siteUrl'=>SITE_URL,
         'iconKeys'=>['order','website','email','events','instagram','facebook','directions','phone','menu','gift','ticket','external','blog','social']]);
 }
 
@@ -252,6 +276,8 @@ if ($path === '/admin/dashboard' && $METHOD === 'GET') {
         'subscribers'  => db()->querySingle("SELECT COUNT(*) FROM subscribers WHERE is_active=1"),
         'shortlinks'   => db()->querySingle("SELECT COUNT(*) FROM shortlinks WHERE is_active=1"),
         'recentClicks' => db()->querySingle("SELECT COUNT(*) FROM analytics WHERE event_type='click' AND created_at>=datetime('now','-7 days')"),
+        'publishedPosts'=> db()->querySingle("SELECT COUNT(*) FROM blog_posts WHERE status='published' AND archived_at IS NULL"),
+        'draftPosts'   => db()->querySingle("SELECT COUNT(*) FROM blog_posts WHERE status='draft' AND archived_at IS NULL"),
     ]);
 }
 
@@ -350,7 +376,7 @@ if (preg_match('#^/admin/buttons/(\d+)$#', $path, $m)) {
              $BODY['start_at']??$btn['start_at'],$BODY['end_at']??$btn['end_at'],$bid]);
         json_ok(['button'=>q1("SELECT * FROM buttons WHERE id=?",[$bid])]);
     }
-    if ($METHOD === 'POST') { // duplicate
+    if ($METHOD === 'POST') {
         require_role($user,$EDIT);
         $id=run("INSERT INTO buttons (page_id,label,url,icon,sort_order,is_active,is_featured,enabled,start_at,end_at) VALUES (?,?,?,?,?,0,?,?,?,?)",
             [$btn['page_id'],$btn['label'].' (Copy)',$btn['url'],$btn['icon'],$btn['sort_order']+1,$btn['is_featured'],$btn['enabled'],$btn['start_at'],$btn['end_at']]);
@@ -480,23 +506,42 @@ if ($path==='/admin/settings') {
     }
 }
 
-// ── BLOG ──────────────────────────────────────────────────────────────
+// ── BLOG (admin) ──────────────────────────────────────────────────────
 if ($path==='/blog' || $path==='/blog/') {
     $user=auth();
     if ($METHOD==='GET') {
         $status=$QUERY['status']??null;
-        $posts=$status ? q("SELECT * FROM blog_posts WHERE status=? ORDER BY created_at DESC",[$status])
-                       : q("SELECT * FROM blog_posts WHERE archived_at IS NULL ORDER BY created_at DESC");
-        json_ok(['posts'=>$posts]);
+        $search=$QUERY['q']??null;
+        $limit=(int)($QUERY['limit']??50);
+        $offset=(int)($QUERY['offset']??0);
+        $where=['archived_at IS NULL']; $params=[];
+        if ($status && $status!=='all') { $where[]='status=?'; $params[]=$status; }
+        if ($search) { $where[]="(title LIKE ? OR excerpt LIKE ? OR category LIKE ?)"; $s="%$search%"; $params[]=$s; $params[]=$s; $params[]=$s; }
+        $wSql=$where ? 'WHERE '.implode(' AND ',$where) : '';
+        $total=db()->querySingle("SELECT COUNT(*) FROM blog_posts $wSql", ...($params ? [] : []));
+        // Count separately
+        $cStmt=db()->prepare("SELECT COUNT(*) FROM blog_posts $wSql");
+        foreach ($params as $i=>$p) $cStmt->bindValue($i+1,$p);
+        $total=$cStmt->execute()->fetchArray()[0];
+        $posts=q("SELECT id,title,slug,status,category,tags,excerpt,cover_image,og_image,author_id,reading_time,published_at,scheduled_at,created_at,updated_at FROM blog_posts $wSql ORDER BY created_at DESC LIMIT $limit OFFSET $offset", $params);
+        json_ok(['posts'=>$posts,'total'=>$total]);
     }
     if ($METHOD==='POST') {
         require_role($user,['super_admin','marketing_manager']);
         $title=$BODY['title']??''; if(!$title) json_err('Title required');
         $slug=preg_replace('/[^a-z0-9]+/','-',strtolower($title)).'-'.time();
+        if (!empty($BODY['slug'])) $slug=preg_replace('/[^a-z0-9-]+/','-',strtolower($BODY['slug']));
         $st=$BODY['status']??'draft';
         $pub=$st==='published'?(new DateTime())->format('Y-m-d H:i:s'):null;
-        $id=run("INSERT INTO blog_posts (title,slug,status,content,excerpt,cover_image,author_id,published_at,scheduled_at) VALUES (?,?,?,?,?,?,?,?,?)",
-            [$title,$slug,$st,$BODY['content']??null,$BODY['excerpt']??null,$BODY['cover_image']??null,$user['id'],$pub,$BODY['scheduled_at']??null]);
+        $words=str_word_count(strip_tags($BODY['content']??''));
+        $rt=max(1,(int)round($words/200));
+        $id=run("INSERT INTO blog_posts (title,slug,status,content,tiptap_json,excerpt,cover_image,og_image,category,tags,seo_title,seo_description,author_id,published_at,scheduled_at,reading_time) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [$title,$slug,$st,$BODY['content']??null,
+             is_array($BODY['tiptap_json']??null)?json_encode($BODY['tiptap_json']):($BODY['tiptap_json']??null),
+             $BODY['excerpt']??null,$BODY['cover_image']??null,$BODY['og_image']??null,
+             $BODY['category']??null,$BODY['tags']??null,
+             $BODY['seo_title']??null,$BODY['seo_description']??null,
+             $user['id'],$pub,$BODY['scheduled_at']??null,$rt]);
         json_ok(['post'=>q1("SELECT * FROM blog_posts WHERE id=?",[$id])]);
     }
 }
@@ -509,15 +554,69 @@ if (preg_match('#^/blog/(\d+)$#',$path,$m)) {
         require_role($user,['super_admin','marketing_manager']);
         $st=$BODY['status']??$post['status'];
         $pub=$post['published_at']; if($st==='published'&&!$pub) $pub=(new DateTime())->format('Y-m-d H:i:s');
-        run("UPDATE blog_posts SET title=?,content=?,excerpt=?,cover_image=?,status=?,scheduled_at=?,published_at=?,updated_at=datetime('now') WHERE id=?",
-            [$BODY['title']??$post['title'],$BODY['content']??$post['content'],$BODY['excerpt']??$post['excerpt'],
-             $BODY['cover_image']??$post['cover_image'],$st,$BODY['scheduled_at']??$post['scheduled_at'],$pub,$bid]);
+        $words=str_word_count(strip_tags($BODY['content']??$post['content']??''));
+        $rt=max(1,(int)round($words/200));
+        $slug=$post['slug'];
+        if(!empty($BODY['slug'])) $slug=preg_replace('/[^a-z0-9-]+/','-',strtolower($BODY['slug']));
+        try {
+            run("UPDATE blog_posts SET title=?,slug=?,content=?,tiptap_json=?,excerpt=?,cover_image=?,og_image=?,category=?,tags=?,seo_title=?,seo_description=?,status=?,scheduled_at=?,published_at=?,reading_time=?,updated_at=datetime('now') WHERE id=?",
+                [$BODY['title']??$post['title'],$slug,
+                 $BODY['content']??$post['content'],
+                 is_array($BODY['tiptap_json']??null)?json_encode($BODY['tiptap_json']):($BODY['tiptap_json']??$post['tiptap_json']),
+                 $BODY['excerpt']??$post['excerpt'],$BODY['cover_image']??$post['cover_image'],
+                 $BODY['og_image']??$post['og_image'],$BODY['category']??$post['category'],
+                 $BODY['tags']??$post['tags'],$BODY['seo_title']??$post['seo_title'],
+                 $BODY['seo_description']??$post['seo_description'],
+                 $st,$BODY['scheduled_at']??$post['scheduled_at'],$pub,$rt,$bid]);
+        } catch(Exception $e){ if(str_contains($e->getMessage(),'UNIQUE'))json_err('Slug already in use',409); throw $e; }
         json_ok(['post'=>q1("SELECT * FROM blog_posts WHERE id=?",[$bid])]);
     }
     if ($METHOD==='DELETE') {
         require_role($user,['super_admin','marketing_manager']);
         run("UPDATE blog_posts SET status='archived',archived_at=datetime('now'),updated_at=datetime('now') WHERE id=?",[$bid]); json_ok();
     }
+}
+
+// ── IMAGE UPLOAD ──────────────────────────────────────────────────────
+if ($path==='/upload' && $METHOD==='POST') {
+    $user=auth(); require_role($user,['super_admin','marketing_manager','store_manager']);
+    if (empty($_FILES['file'])) json_err('No file provided');
+    $file=$_FILES['file'];
+    if ($file['error']!==UPLOAD_ERR_OK) json_err('Upload error: '.$file['error']);
+    $maxBytes=10*1024*1024;
+    if ($file['size']>$maxBytes) json_err('File too large (max 10 MB)');
+    $allowed=['image/jpeg','image/png','image/gif','image/webp'];
+    $mime=mime_content_type($file['tmp_name']);
+    if (!in_array($mime,$allowed)) json_err('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP');
+    $extMap=['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
+    $ext=$extMap[$mime];
+    $subdir=date('Y/m').'/';
+    $dir=UPLOAD_DIR.$subdir;
+    if (!is_dir($dir)) mkdir($dir,0755,true);
+    $safe=preg_replace('/[^a-z0-9\-]/','',strtolower(pathinfo($file['name'],PATHINFO_FILENAME)));
+    $safe=trim($safe,'-') ?: 'image';
+    $name=uniqid().'_'.$safe.'.'.$ext;
+    $dest=$dir.$name;
+    if (!move_uploaded_file($file['tmp_name'],$dest)) json_err('Failed to save file');
+    json_ok(['url'=>UPLOAD_URL.$subdir.$name,'filename'=>$name,'size'=>$file['size'],'mime'=>$mime]);
+}
+
+// ── SITEMAP ───────────────────────────────────────────────────────────
+if ($path==='/sitemap.xml' && $METHOD==='GET') {
+    $posts=q("SELECT slug,updated_at FROM blog_posts WHERE status='published' AND archived_at IS NULL ORDER BY published_at DESC");
+    $static=['/','menu.html','locations.html','order.html','about.html','happy-hour.html','blog.html','links/'];
+    header('Content-Type: application/xml; charset=utf-8');
+    echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+    echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
+    foreach ($static as $s) {
+        echo "  <url><loc>".SITE_URL."/$s</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n";
+    }
+    foreach ($posts as $p) {
+        $mod=date('Y-m-d',strtotime($p['updated_at']));
+        echo "  <url><loc>".SITE_URL."/stories/{$p['slug']}</loc><lastmod>$mod</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>\n";
+    }
+    echo '</urlset>';
+    exit;
 }
 
 // ── PUBLIC ────────────────────────────────────────────────────────────
@@ -553,13 +652,37 @@ if (preg_match('#^/public/shortlinks/(.+)$#',$path,$m) && $METHOD==='GET') {
     header('Content-Type: text/html'); http_response_code(302);
     header('Location: '.$sl['destination']); exit;
 }
+
+// Legacy public posts endpoints
 if ($path==='/public/posts' && $METHOD==='GET') {
-    json_ok(['posts'=>q("SELECT id,title,slug,excerpt,cover_image,published_at FROM blog_posts WHERE status='published' AND archived_at IS NULL ORDER BY published_at DESC LIMIT 20")]);
+    json_ok(['posts'=>q("SELECT id,title,slug,excerpt,cover_image,category,tags,reading_time,published_at FROM blog_posts WHERE status='published' AND archived_at IS NULL ORDER BY published_at DESC LIMIT 20")]);
 }
 if (preg_match('#^/public/posts/(.+)$#',$path,$m) && $METHOD==='GET') {
-    $post=q1("SELECT id,title,slug,content,excerpt,cover_image,published_at FROM blog_posts WHERE slug=? AND status='published' AND archived_at IS NULL",[$m[1]]);
+    $post=q1("SELECT id,title,slug,content,excerpt,cover_image,og_image,category,tags,seo_title,seo_description,reading_time,published_at FROM blog_posts WHERE slug=? AND status='published' AND archived_at IS NULL",[$m[1]]);
     if(!$post) json_err('Post not found',404);
     json_ok(['post'=>$post]);
+}
+
+// Public stories endpoints (new canonical paths)
+if ($path==='/public/stories' && $METHOD==='GET') {
+    $limit=(int)($QUERY['limit']??12);
+    $offset=(int)($QUERY['offset']??0);
+    $category=$QUERY['category']??null;
+    $where=['status=\'published\'','archived_at IS NULL']; $params=[];
+    if ($category) { $where[]='category=?'; $params[]=$category; }
+    $wSql='WHERE '.implode(' AND ',$where);
+    $cStmt=db()->prepare("SELECT COUNT(*) FROM blog_posts $wSql");
+    foreach ($params as $i=>$p) $cStmt->bindValue($i+1,$p);
+    $total=$cStmt->execute()->fetchArray()[0];
+    $posts=q("SELECT id,title,slug,excerpt,cover_image,og_image,category,tags,reading_time,published_at FROM blog_posts $wSql ORDER BY published_at DESC LIMIT $limit OFFSET $offset",$params);
+    $cats=q("SELECT DISTINCT category FROM blog_posts WHERE status='published' AND archived_at IS NULL AND category IS NOT NULL ORDER BY category ASC");
+    json_ok(['posts'=>$posts,'total'=>$total,'categories'=>array_column($cats,'category')]);
+}
+if (preg_match('#^/public/stories/(.+)$#',$path,$m) && $METHOD==='GET') {
+    $post=q1("SELECT id,title,slug,content,excerpt,cover_image,og_image,category,tags,seo_title,seo_description,reading_time,published_at,updated_at FROM blog_posts WHERE slug=? AND status='published' AND archived_at IS NULL",[$m[1]]);
+    if(!$post) json_err('Post not found',404);
+    $related=q("SELECT id,title,slug,excerpt,cover_image,category,reading_time,published_at FROM blog_posts WHERE status='published' AND archived_at IS NULL AND id!=? AND (category=? OR category IS NULL) ORDER BY published_at DESC LIMIT 3",[$post['id'],$post['category']??'']);
+    json_ok(['post'=>$post,'related'=>$related]);
 }
 
 // ── 404 ───────────────────────────────────────────────────────────────
