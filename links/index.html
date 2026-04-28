@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bakudan Ramen — Links</title>
 <meta name="description" content="Order online, find locations, and follow Bakudan Ramen — Authentic Japanese Ramen in San Antonio.">
-<meta property="og:title" content="Bakudan Ramen">
-<meta property="og:description" content="Authentic Japanese Ramen · San Antonio, TX">
+<meta property="og:title" content="Bakudan Ramen — Order · Locations · Follow">
+<meta property="og:description" content="Order online, find your nearest Bakudan Ramen location, and follow us on social. Three San Antonio locations: The Rim, Stone Oak, and Bandera.">
+<meta property="og:image" content="https://www.bakudanramen.com/images/noodles-hero.png">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.bakudanramen.com/links/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://www.bakudanramen.com/images/noodles-hero.png">
 <meta name="theme-color" content="#000000">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -144,6 +147,14 @@ body{
   border-radius:var(--r);
   text-align:center;
   font-size:13px;color:var(--muted);
+}
+
+/* ── Focus (keyboard accessibility) ── */
+.btn-order:focus-visible,
+.store-a:focus-visible,
+.lnk:focus-visible{
+  outline:2px solid var(--red);
+  outline-offset:3px;
 }
 
 /* ── Footer ── */

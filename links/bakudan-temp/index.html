@@ -126,6 +126,11 @@ body{
 .lnk-disabled{opacity:.45;cursor:default}
 .lnk-disabled:hover,.lnk-disabled:active{background:var(--surface);border-color:var(--border)}
 
+/* Focus (keyboard accessibility) */
+.btn-primary:focus-visible,
+.store-a:focus-visible,
+.lnk:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
 /* Toast notification */
 .toast{
   position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
