@@ -1,0 +1,76 @@
+# Artillery 500K load simulation config
+# WARNING: Do NOT run against production shared hosting — use staging/local
+# Run against: http://localhost:PORT or a load-test staging server
+config:
+  target: "https://www.bakudanramen.com"
+  phases:
+    - duration: 600
+      arrivalRate: 100
+      name: "Warm up traffic"
+    - duration: 1800
+      arrivalRate: 200
+      name: "Normal lunch/dinner traffic"
+    - duration: 1200
+      arrivalRate: 500
+      name: "Peak campaign traffic"
+    - duration: 600
+      arrivalRate: 1000
+      name: "Viral spike traffic"
+  defaults:
+    headers:
+      User-Agent: "Bakudan-QA-Customer-Simulation"
+
+scenarios:
+  - name: "Homepage visitor"
+    weight: 30
+    flow:
+      - get:
+          url: "/"
+      - think: 2
+
+  - name: "Links order customer"
+    weight: 30
+    flow:
+      - get:
+          url: "/links/"
+      - think: 1
+
+  - name: "Temp linktree visitor"
+    weight: 10
+    flow:
+      - get:
+          url: "/links/bakudan-temp/"
+      - think: 1
+      - get:
+          url: "/links/bakudan-temp/locations/"
+      - think: 2
+
+  - name: "Stories reader"
+    weight: 10
+    flow:
+      - get:
+          url: "/stories/"
+      - think: 3
+
+  - name: "Admin page check"
+    weight: 1
+    flow:
+      - get:
+          url: "/links-admin/"
+
+  - name: "Robots and sitemap crawler"
+    weight: 5
+    flow:
+      - get:
+          url: "/robots.txt"
+      - get:
+          url: "/api/sitemap.xml"
+
+  - name: "API health check"
+    weight: 4
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@bakudanramen.com"
+            password: "admin123"
