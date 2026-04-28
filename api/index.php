@@ -246,7 +246,7 @@ if ($path === '/auth/login' && $METHOD === 'POST') {
     $user = q1("SELECT * FROM users WHERE email=? AND is_active=1", [$email]);
     if (!$user || !password_verify($pass, $user['password_hash'])) json_err('Invalid credentials', 401);
     $token = jwt_encode(['id'=>$user['id'],'email'=>$user['email'],'role'=>$user['role'],'exp'=>time()+JWT_TTL]);
-    json_ok(['token'=>$token,'user'=>['id'=>$user['id'],'email'=>$user['email'],'name'=>$user['name'],'role'=>$user['role'],'store_slug'=>$user['store_slug']]]);
+    json_ok(['success'=>true,'token'=>$token,'user'=>['id'=>$user['id'],'email'=>$user['email'],'name'=>$user['name'],'role'=>$user['role'],'store_slug'=>$user['store_slug']]]);
 }
 
 if ($path === '/auth/change-password' && $METHOD === 'POST') {
