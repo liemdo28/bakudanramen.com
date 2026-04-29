@@ -452,25 +452,21 @@ button:focus-visible {
 }
 
 .btn-waitlist {
-    display: block;
-    margin-top: 0.75rem;
-    padding: 0.875rem 1.125rem;
-    border-radius: var(--radius-full);
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--color-text-light);
-    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
     font-weight: 600;
-    font-size: 0.9rem;
-    text-transform: none;
-    letter-spacing: 0.5px;
-    transition: all 0.2s ease;
-    text-decoration: none;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 0.75rem;
+    width: 100%;
 }
 
 .btn-waitlist:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
     transform: translateY(-1px);
 }
 
