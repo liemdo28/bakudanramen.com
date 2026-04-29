@@ -13,10 +13,17 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Stage deploy files
+      - name: Set up SSH key
         run: |
-          mkdir -p /tmp/deploy
-          rsync -a --exclude='.git' \
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via rsync over SSH
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
             --exclude='test-results' \
@@ -33,19 +40,5 @@ jobs:
             --exclude='*.sh' \
             --exclude='.htpasswd' \
             --exclude='.env*' \
-            ./ /tmp/deploy/
-          echo "Files staged:"
-          find /tmp/deploy -type f | head -40
-
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          protocol: ftp
-          port: 21
-          local-dir: /tmp/deploy/
-          server-dir: /bakudanramen.com/
-          timeout: 60000
-          log-level: minimal
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.PORT }}" \
+            ./ ${{ secrets.USERNAME }}@${{ secrets.HOST }}:${{ secrets.TARGET_DIR }}/
