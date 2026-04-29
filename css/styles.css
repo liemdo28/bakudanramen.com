@@ -303,13 +303,44 @@ button:focus-visible {
     justify-content: center;
     position: relative;
     overflow: hidden;
-    background-image:
-        linear-gradient(rgba(18, 14, 12, 0.72), rgba(18, 14, 12, 0.82)),
-        url('../images/hero-bakudan-logo.webp');
+    background-image: url('../images/hero-bakudan-logo.webp');
     background-size: cover;
-    background-position: center;
+    background-position: center 30%;
     background-repeat: no-repeat;
     background-color: #120e0c;
+}
+
+/* Dark overlay — lighter in the middle so photo is visible */
+.hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(18, 14, 12, 0.62) 0%,
+        rgba(18, 14, 12, 0.38) 40%,
+        rgba(18, 14, 12, 0.72) 100%
+    );
+    z-index: 1;
+}
+
+/* Mirror reflection — flipped photo fading up from bottom */
+.hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 55%;
+    background-image: url('../images/hero-bakudan-logo.webp');
+    background-size: cover;
+    background-position: center 30%;
+    transform: scaleY(-1);
+    transform-origin: bottom center;
+    opacity: 0.18;
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 75%);
+    mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 75%);
+    z-index: 0;
 }
 
 .hero-bg {
