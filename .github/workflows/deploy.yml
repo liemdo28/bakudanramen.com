@@ -13,35 +13,39 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-
-      - name: Deploy via SFTP (lftp)
-        env:
-          SFTP_HOST: ${{ secrets.HOST }}
-          SFTP_USER: ${{ secrets.USERNAME }}
-          SFTP_PASS: ${{ secrets.PASSWORD }}
-          SFTP_TARGET: ${{ secrets.TARGET_DIR }}
+      - name: Stage deploy files
         run: |
-          lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST \
-            -e "set sftp:auto-confirm yes; \
-                set net:max-retries 3; \
-                set net:timeout 60; \
-                mirror -R --only-newer --parallel=4 \
-                  --exclude-glob .git \
-                  --exclude-glob .github \
-                  --exclude-glob node_modules \
-                  --exclude-glob test-results \
-                  --exclude-glob data \
-                  --exclude-glob uploads \
-                  --exclude-glob server \
-                  --exclude-glob qa \
-                  --exclude-glob stories \
-                  --exclude-glob links-admin \
-                  --exclude '\.md$' \
-                  --exclude 'package.*\.json$' \
-                  --exclude '\.ts$' \
-                  --exclude '\.sh$' \
-                  --exclude '^\.htpasswd$' \
-                  . $SFTP_TARGET; \
-                bye"
+          mkdir -p /tmp/deploy
+          rsync -a --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='test-results' \
+            --exclude='data' \
+            --exclude='uploads' \
+            --exclude='server' \
+            --exclude='qa' \
+            --exclude='stories' \
+            --exclude='links-admin' \
+            --exclude='Walkthrough' \
+            --exclude='*.md' \
+            --exclude='package*.json' \
+            --exclude='playwright.config*' \
+            --exclude='*.sh' \
+            --exclude='.htpasswd' \
+            --exclude='.env*' \
+            ./ /tmp/deploy/
+          echo "Files staged:"
+          find /tmp/deploy -type f | head -40
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: /tmp/deploy/
+          server-dir: /bakudanramen.com/
+          timeout: 60000
+          log-level: minimal
