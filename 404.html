@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Page Not Found — Bakudan Ramen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+    <style>
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem 5%;
+            background: var(--color-bg-primary);
+        }
+        .error-code {
+            font-family: var(--font-display);
+            font-size: clamp(6rem, 20vw, 12rem);
+            color: var(--color-accent-red);
+            line-height: 1;
+            margin-bottom: 1rem;
+            opacity: 0.6;
+        }
+        .error-title {
+            font-family: var(--font-display);
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            color: var(--color-cream);
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+        }
+        .error-desc {
+            color: var(--color-text-muted);
+            font-size: 1rem;
+            line-height: 1.8;
+            max-width: 400px;
+            margin: 0 auto 2.5rem;
+        }
+        .error-links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div>
+            <div class="error-code">404</div>
+            <div class="error-title">Page Not Found</div>
+            <p class="error-desc">The page you're looking for doesn't exist or may have moved. Try one of the links below.</p>
+            <div class="error-links">
+                <a href="/" class="btn btn-primary">Go Home</a>
+                <a href="/menu.html" class="btn btn-outline">View Menu</a>
+                <a href="/locations.html" class="btn btn-outline">Locations</a>
+                <a href="/order.html" class="btn btn-outline">Order Online</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

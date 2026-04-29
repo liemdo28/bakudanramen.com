@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
+# Admin and staging — noindex already set, also block crawlers here
+Disallow: /links-admin/
+Disallow: /links/bakudan-temp/
+Disallow: /links-temp/
+Disallow: /uploads/
+Disallow: /data/
+
 Sitemap: https://www.bakudanramen.com/sitemap.xml
