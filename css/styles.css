@@ -317,9 +317,10 @@ button:focus-visible {
     position: absolute;
     inset: 0;
     background-color: #3a3029;
+    background-image: url('../images/hero-bakudan.jpg');
     background-size: cover;
     background-position: center;
-    opacity: 0.4;
+    opacity: 0.55;
 }
 
 .hero-content {
@@ -466,12 +467,13 @@ button:focus-visible {
 }
 
 .stats-container {
-    max-width: var(--max-width);
+    max-width: 900px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
     gap: 2rem;
     text-align: center;
+    justify-content: center;
 }
 
 .stat-item {
