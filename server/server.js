@@ -149,7 +149,7 @@ app.listen(PORT, () => {
   Blog:        http://localhost:${PORT}/blog-cms
   API:         http://localhost:${PORT}/api/
 
-  Default login:  admin@bakudanramen.com / admin123
+  Auth:        JWT (set JWT_SECRET env var)
 `);
 });
 

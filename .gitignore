@@ -32,7 +32,10 @@ build/
 *.log
 
 # Runtime data (SQLite database and uploaded files)
-data/
+# Exclude the database files but keep data/site-config.json tracked
+data/*.db
+data/*.db-shm
+data/*.db-wal
 uploads/
 *.db
 *.sqlite

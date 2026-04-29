@@ -1,6 +1,22 @@
 'use strict';
 const router = require('express').Router();
 const db     = require('../db');
+const path   = require('path');
+const fs     = require('fs');
+
+const CONFIG_PATH = path.join(__dirname, '..', '..', 'data', 'site-config.json');
+
+// GET /api/public/site-config — serve site-config.json with ETag caching
+router.get('/site-config', (req, res) => {
+  try {
+    const raw    = fs.readFileSync(CONFIG_PATH, 'utf8');
+    const config = JSON.parse(raw);
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.json({ ok: true, data: config });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Config unavailable' });
+  }
+});
 
 // GET /api/public/pages/:slug — public link hub page
 router.get('/pages/:slug', (req, res) => {

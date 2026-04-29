@@ -186,21 +186,21 @@ footer a{color:var(--muted);text-decoration:none}
         <div class="btn-order-sub">Pickup &middot; Delivery &middot; Catering &mdash; tap to choose location</div>
       </button>
       <div class="store-picker" id="store-picker">
-        <a class="store-a" href="https://order.toasttab.com/online/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('order-rim')">
+        <a class="store-a" href="https://order.toasttab.com/online/bakudanramen" data-config-link="locations.the-rim.toast_order_url" target="_blank" rel="noopener noreferrer" onclick="track('order-rim')">
           <div class="store-ico">🏮</div>
           <div>
             <div class="store-name">The Rim</div>
             <div class="store-addr">17619 La Cantera Pkwy #208</div>
           </div>
         </a>
-        <a class="store-a" href="https://order.toasttab.com/online/bakudan-ramen-stone-oak" target="_blank" rel="noopener noreferrer" onclick="track('order-stoneoak')">
+        <a class="store-a" href="https://order.toasttab.com/online/bakudan-ramen-stone-oak" data-config-link="locations.stone-oak.toast_order_url" target="_blank" rel="noopener noreferrer" onclick="track('order-stoneoak')">
           <div class="store-ico">🏮</div>
           <div>
             <div class="store-name">Stone Oak</div>
             <div class="store-addr">22506 US Hwy 281 N #106</div>
           </div>
         </a>
-        <a class="store-a" href="https://order.toasttab.com/online/bakudan-bandera" target="_blank" rel="noopener noreferrer" onclick="track('order-bandera')">
+        <a class="store-a" href="https://order.toasttab.com/online/bakudan-bandera" data-config-link="locations.bandera.toast_order_url" target="_blank" rel="noopener noreferrer" onclick="track('order-bandera')">
           <div class="store-ico">🏮</div>
           <div>
             <div class="store-name">Bandera</div>
@@ -355,5 +355,6 @@ function track(label) {
   }).catch(function(){});
 }
 </script>
+<script src="/js/site-config.js" defer></script>
 </body>
 </html>

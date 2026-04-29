@@ -1,0 +1,82 @@
+{
+  "_version": 1,
+  "_updated_at": "2026-04-29",
+  "_note": "Single source of truth for all business links. Edit via /links-admin/ → Locations / Order Links / Global Links, then Publish.",
+
+  "locations": {
+    "the-rim": {
+      "key": "the-rim",
+      "name": "The Rim",
+      "display_name": "Bakudan Ramen – The Rim",
+      "address_line_1": "17619 La Cantera Pkwy UNIT 208",
+      "city": "San Antonio",
+      "state": "TX",
+      "zip": "78257",
+      "phone": "(210) 257-8080",
+      "phone_link": "tel:+12102578080",
+      "lat": 29.6102573,
+      "lng": -98.5986817,
+      "google_maps_dir": "https://www.google.com/maps/dir//17619+La+Cantera+Pkwy+Unit+208,+San+Antonio,+TX+78257",
+      "toast_order_url": "https://order.toasttab.com/online/bakudanramen",
+      "waitlist_url": "https://waitlist.me/multiplace-analytics?place_id=12052320465&utm_source=website&utm_medium=location-card&utm_campaign=waitlist&utm_content=the-rim",
+      "is_active": true,
+      "sort_order": 1
+    },
+    "stone-oak": {
+      "key": "stone-oak",
+      "name": "Stone Oak",
+      "display_name": "Bakudan Ramen – Stone Oak",
+      "address_line_1": "22506 U.S. Hwy 281 N Ste 106",
+      "city": "San Antonio",
+      "state": "TX",
+      "zip": "78258",
+      "phone": "(210) 437-0632",
+      "phone_link": "tel:+12104370632",
+      "lat": 29.6507067,
+      "lng": -98.4481635,
+      "google_maps_dir": "https://www.google.com/maps/dir//22506+U.S.+Hwy+281+N+Ste+106,+San+Antonio,+TX+78258",
+      "toast_order_url": "https://order.toasttab.com/online/bakudan-ramen-stone-oak",
+      "waitlist_url": "https://waitlist.me/multiplace-analytics?place_id=13145581824&utm_source=website&utm_medium=location-card&utm_campaign=waitlist&utm_content=stone-oak",
+      "is_active": true,
+      "sort_order": 2
+    },
+    "bandera": {
+      "key": "bandera",
+      "name": "Bandera",
+      "display_name": "Bakudan Ramen – Bandera",
+      "address_line_1": "11309 Bandera Rd Suite 111",
+      "city": "San Antonio",
+      "state": "TX",
+      "zip": "78254",
+      "phone": "(210) 277-7740",
+      "phone_link": "tel:+12102777740",
+      "lat": 29.5484131,
+      "lng": -98.6627874,
+      "google_maps_dir": "https://www.google.com/maps/dir//11309+Bandera+Rd+Ste+111,+San+Antonio,+TX+78250",
+      "toast_order_url": "https://order.toasttab.com/online/bakudan-bandera",
+      "waitlist_url": "https://waitlist.me/multiplace-analytics?place_id=13718440405&utm_source=website&utm_medium=location-card&utm_campaign=waitlist&utm_content=bandera",
+      "is_active": true,
+      "sort_order": 3
+    }
+  },
+
+  "global_links": {
+    "rewards":          "https://www.toasttab.com/bakudanramen/rewardsSignup",
+    "instagram":        "https://www.instagram.com/bakudanramen/",
+    "facebook":         "https://www.facebook.com/bakudanSA/",
+    "yelp":             "https://www.yelp.com/biz/bakudan-ramen-san-antonio",
+    "reservation":      null,
+    "gift_cards":       null,
+    "midweek_campaign": "https://rim.bakudanramen.com/",
+    "order_smart":      "/order.html",
+    "menu":             "/menu.html",
+    "locations":        "/locations.html"
+  },
+
+  "homepage_ctas": [
+    { "id": "order",      "label": "Order Online",   "url_key": "global_links.order_smart",  "visible": true,  "sort_order": 1 },
+    { "id": "menu",       "label": "View Menu",       "url_key": "global_links.menu",          "visible": true,  "sort_order": 2 },
+    { "id": "rewards",    "label": "Join Rewards",    "url_key": "global_links.rewards",       "visible": true,  "sort_order": 3 },
+    { "id": "gift_cards", "label": "Gift Cards",      "url_key": "global_links.gift_cards",    "visible": false, "sort_order": 4 }
+  ]
+}

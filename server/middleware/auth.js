@@ -2,7 +2,13 @@
 const jwt = require('jsonwebtoken');
 const db  = require('../db');
 
-const SECRET = process.env.JWT_SECRET || 'bakudan-dev-secret-change-in-production';
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    '[auth] JWT_SECRET environment variable is required but not set. ' +
+    'Set it in your .env file or server environment before starting.'
+  );
+}
+const SECRET = process.env.JWT_SECRET;
 
 function sign(payload) {
   return jwt.sign(payload, SECRET, { expiresIn: '7d' });

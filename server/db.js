@@ -121,15 +121,25 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 );
 `);
 
-// Seed default admin user
+// Seed default admin user — requires ADMIN_EMAIL + ADMIN_PASSWORD env vars
 const { c: userCount } = db.prepare('SELECT COUNT(*) AS c FROM users').get();
 if (userCount === 0) {
-  const hash = bcrypt.hashSync('admin123', 10);
+  const adminEmail    = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) {
+    throw new Error(
+      '[db] First-run setup: ADMIN_EMAIL and ADMIN_PASSWORD environment variables ' +
+      'must be set before the database is initialized. No default credentials exist.'
+    );
+  }
+  if (adminPassword.length < 16) {
+    throw new Error('[db] ADMIN_PASSWORD must be at least 16 characters.');
+  }
+  const hash = bcrypt.hashSync(adminPassword, 12);
   db.prepare(
     `INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)`
-  ).run('admin@bakudanramen.com', hash, 'Administrator', 'super_admin');
-  console.log('[db] Seeded default admin → admin@bakudanramen.com / admin123');
-  console.log('[db] IMPORTANT: Change this password immediately after first login.');
+  ).run(adminEmail.toLowerCase().trim(), hash, 'Administrator', 'super_admin');
+  console.log('[db] Admin user created for:', adminEmail);
 }
 
 // Seed default settings
