@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-define('BKDN_DB_VERSION', '1.0.1');
+define('BKDN_DB_VERSION', '1.0.2');
 
 /* ─── Table creation (called on activation + upgrade) ───────────── */
 

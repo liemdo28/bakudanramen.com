@@ -8,21 +8,22 @@ function bkdn_render_page(array $page): string {
     $theme   = $page['theme'] ?? bkdn_default_theme();
     $buttons = $page['buttons'] ?? [];
 
-    // Guarantee Instagram + Facebook always appear if options have URLs
-    // (covers case where DB buttons are missing or were never seeded)
+    // Guarantee Instagram + Facebook always appear — hardcoded fallback if options empty
+    $ig_url = !empty($opt['instagram_url']) ? $opt['instagram_url'] : 'https://www.instagram.com/bakudanramen/';
+    $fb_url = !empty($opt['facebook_url'])  ? $opt['facebook_url']  : 'https://www.facebook.com/share/1DtztAQpcV/?mibextid=wwXIfr';
     $icon_keys_present = array_column($buttons, 'icon_key');
-    if (!in_array('instagram', $icon_keys_present) && !empty($opt['instagram_url'])) {
+    if (!in_array('instagram', $icon_keys_present)) {
         $buttons[] = [
             'id' => 0, 'title' => 'Instagram', 'subtitle' => '@bakudanramen',
-            'icon_key' => 'instagram', 'url' => $opt['instagram_url'],
+            'icon_key' => 'instagram', 'url' => $ig_url,
             'style_variant' => 'secondary', 'sort_order' => 50,
             'enabled' => 1, 'is_active' => 1, 'opens_in_new_tab' => 1,
         ];
     }
-    if (!in_array('facebook', $icon_keys_present) && !empty($opt['facebook_url'])) {
+    if (!in_array('facebook', $icon_keys_present)) {
         $buttons[] = [
             'id' => 0, 'title' => 'Facebook', 'subtitle' => 'Bakudan Ramen',
-            'icon_key' => 'facebook', 'url' => $opt['facebook_url'],
+            'icon_key' => 'facebook', 'url' => $fb_url,
             'style_variant' => 'secondary', 'sort_order' => 60,
             'enabled' => 1, 'is_active' => 1, 'opens_in_new_tab' => 1,
         ];
@@ -170,7 +171,13 @@ button{font-family:inherit;cursor:pointer}
 
   <!-- Hero -->
   <div class="s hero">
+    <?php if (!empty($page['logo_path'])): ?>
+    <div class="logo-circle" style="padding:0;overflow:hidden" aria-hidden="true">
+      <img src="<?php echo esc_url($page['logo_path']); ?>" alt="" style="width:100%;height:100%;object-fit:cover">
+    </div>
+    <?php else: ?>
     <div class="logo-circle" aria-hidden="true">爆</div>
+    <?php endif; ?>
     <h1><?php echo $headline; ?></h1>
     <div class="divider"></div>
     <p><?php echo $sub; ?></p>

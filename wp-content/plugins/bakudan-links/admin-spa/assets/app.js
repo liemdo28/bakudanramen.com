@@ -850,6 +850,10 @@ function buildInfoTab(p, canEdit) {
         <label class="form-label">Store Slug <span style="color:#64748b;font-size:11px">(for multi-store filtering)</span></label>
         <input id="p-store-slug" class="form-control" value="${escHtml(p.store_slug||'')}"${dis}>
       </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">Logo Image URL <span style="color:#64748b;font-size:11px">(replaces 爆 circle on /links — use a square food photo)</span></label>
+        <input id="p-logo-path" class="form-control" value="${escHtml(p.logo_path||'')}" placeholder="https://bakudanramen.com/wp-content/uploads/..." ${dis}>
+      </div>
     </div>
   `;
 }
@@ -929,6 +933,7 @@ async function savePage() {
     campaign_name: document.getElementById('p-campaign')?.value.trim() || null,
     published_at:  document.getElementById('p-published-at')?.value.replace('T',' ') || null,
     expires_at:    document.getElementById('p-expires-at')?.value.replace('T',' ')   || null,
+    logo_path:     document.getElementById('p-logo-path')?.value.trim()               || null,
     theme_json:    theme,
     is_active:     p.is_active,
   };

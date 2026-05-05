@@ -191,6 +191,8 @@ function bkdn_sanitize_page_input(WP_REST_Request $req): array {
         'published_at' => sanitize_text_field($req->get_param('published_at') ?? '') ?: null,
         'expires_at'   => sanitize_text_field($req->get_param('expires_at')   ?? '') ?: null,
         'theme_json'   => !empty($theme) ? wp_json_encode($theme) : null,
+        'logo_path'    => esc_url_raw($req->get_param('logo_path')    ?? '') ?: null,
+        'og_image_path'=> esc_url_raw($req->get_param('og_image_path') ?? '') ?: null,
     ];
 }
 
