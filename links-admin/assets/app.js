@@ -33,7 +33,7 @@ async function api(method, path, body = null) {
 
   const res = await fetch(REST + path, opts);
 
-  if (res.status === 401) {
+  if (res.status === 401 && path !== '/auth/login') {
     logout(true);
     return null;
   }
