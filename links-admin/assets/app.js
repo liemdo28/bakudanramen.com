@@ -1345,7 +1345,7 @@ function renderButtonList() {
       <div class="btn-row-body">
         <div class="btn-row-title">
           ${featured ? '<span style="color:#fbbf24;margin-right:4px" title="Featured">&#9733;</span>' : ''}
-          ${escHtml(b.title)}
+          ${escHtml(b.label)}
         </div>
         <div class="btn-row-meta">
           <span class="badge ${statusClass}" style="font-size:10px">${statusLabel}</span>
@@ -1500,8 +1500,8 @@ function buttonForm(b = {}) {
   return `
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input id="bf-title" class="form-control" value="${escHtml(b.title||'')}" required>
+        <label class="form-label">Label *</label>
+        <input id="bf-label" class="form-control" value="${escHtml(b.label||'')}" required>
       </div>
       <div class="form-group">
         <label class="form-label">Subtitle</label>
@@ -1549,7 +1549,7 @@ function buttonForm(b = {}) {
 
 function getButtonFormValues() {
   return {
-    title:            document.getElementById('bf-title').value.trim(),
+    label:            document.getElementById('bf-label').value.trim(),
     subtitle:         document.getElementById('bf-subtitle').value.trim() || null,
     url:              document.getElementById('bf-url').value.trim(),
     icon_key:         document.getElementById('bf-icon').value || null,
@@ -1572,7 +1572,7 @@ function openAddButton() {
 
 async function addButton() {
   const vals = getButtonFormValues();
-  if (!vals.title) { toast('Title is required.', 'error'); return; }
+  if (!vals.label) { toast('Label is required.', 'error'); return; }
 
   const p = state.currentPage;
   const res = await POST('/admin/pages/' + p.id + '/buttons', {
@@ -1601,7 +1601,7 @@ function openEditButton(id) {
 
 async function updateButton(id) {
   const vals = getButtonFormValues();
-  if (!vals.title) { toast('Title is required.', 'error'); return; }
+  if (!vals.label) { toast('Label is required.', 'error'); return; }
 
   const res = await PUT('/admin/buttons/' + id, vals);
   if (res?.ok) {
@@ -1619,7 +1619,7 @@ async function duplicateButton(id) {
   const res = await POST('/admin/buttons/' + id, {});
   if (res?.ok) {
     const original = state.currentButtons.find(x => x.id === id);
-    if (original) state.currentButtons.push({ ...original, id: res.data.id, title: original.title + ' (copy)' });
+    if (original) state.currentButtons.push({ ...original, id: res.data.id, label: original.label + ' (copy)' });
     renderButtonList();
     toast('Button duplicated!');
   } else {
@@ -1831,7 +1831,7 @@ function renderPageAnalyticsCards(d) {
   ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
 
   const topButtonsHtml = (d.top_buttons||[]).map(b =>
-    `<tr><td>${escHtml(b.title||'(untitled)')}</td><td style="text-align:right">${fmtNum(b.clicks)}</td></tr>`
+    `<tr><td>${escHtml(b.label||'(untitled)')}</td><td style="text-align:right">${fmtNum(b.clicks)}</td></tr>`
   ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No clicks recorded yet</td></tr>';
 
   return `
@@ -2388,7 +2388,7 @@ async function viewScheduling() {
             return `
             <div class="sched-row">
               <div class="sched-row-info">
-                <div class="sched-row-title">${escHtml(b.title)}</div>
+                <div class="sched-row-title">${escHtml(b.label)}</div>
                 <div class="sched-row-meta">
                   <a href="#/pages/${item.page.id}" style="color:#60a5fa">${escHtml(item.page.title)}</a>
                   ${b.icon_key ? `· <span style="color:#64748b">${escHtml(b.icon_key)}</span>` : ''}
