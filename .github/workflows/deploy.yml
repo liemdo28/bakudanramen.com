@@ -36,14 +36,14 @@ jobs:
             --exclude='.env*' \
             ./ /tmp/deploy/
 
-      - name: Deploy via SFTP
+      - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
-          protocol: sftp
-          port: ${{ secrets.PORT || '22' }}
+          protocol: ftps
+          port: 21
           local-dir: /tmp/deploy/
           server-dir: ${{ secrets.TARGET_DIR || '/bakudanramen.com/' }}
           timeout: 60000
