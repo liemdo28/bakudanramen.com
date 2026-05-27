@@ -289,6 +289,17 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /**
+   * URL-safe attribute escaper.
+   * - Escapes & → &amp; so the browser correctly decodes it back to & in the DOM value.
+   *   (critical for query params like ?foo&bar where & would otherwise look like an entity ref)
+   * - Escapes " → &#34; for safe use in attribute value="..."
+   * - Does NOT escape < > as they are valid in URLs
+   */
+  function escUrl(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&#34;');
+  }
+
   function fmtDate(str) {
     if (!str) return '—';
     return new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1509,7 +1520,7 @@
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label class="form-label">URL</label>
-        <input id="bf-url" class="form-control" value="${escHtml(b.url || '')}" placeholder="https://…">
+        <input id="bf-url" class="form-control" value="${escUrl(b.url || '')}" placeholder="https://…">
       </div>
       <div class="form-group">
         <label class="form-label">Icon</label>
@@ -1572,14 +1583,17 @@
 
   async function addButton() {
     const vals = getButtonFormValues();
+    console.log('BUTTON_PAYLOAD', vals);
     if (!vals.label) { toast('Label is required.', 'error'); return; }
 
     const p = state.currentPage;
-    const res = await POST('/admin/pages/' + p.id + '/buttons', {
+    const payload = {
       ...vals,
       sort_order: state.currentButtons.length,
       enabled: 1, is_active: 1,
-    });
+    };
+    console.log('BUTTON_PAYLOAD', payload);
+    const res = await POST('/admin/pages/' + p.id + '/buttons', payload);
     if (res?.ok) {
       state.currentButtons.push({ id: res.data.id, ...vals, enabled: 1, is_active: 1 });
       renderButtonList();
@@ -1601,6 +1615,7 @@
 
   async function updateButton(id) {
     const vals = getButtonFormValues();
+    console.log('BUTTON_PAYLOAD', vals);
     if (!vals.label) { toast('Label is required.', 'error'); return; }
 
     const res = await PUT('/admin/buttons/' + id, vals);
@@ -1619,7 +1634,7 @@
     const res = await POST('/admin/buttons/' + id, {});
     if (res?.ok) {
       const original = state.currentButtons.find(x => x.id === id);
-      if (original) state.currentButtons.push({ ...original, id: res.data.id, label: original.label + ' (copy)' });
+      if (original) state.currentButtons.push({ ...original, id: res.data.id, label: original.label + ' (copy)', url: original.url });
       renderButtonList();
       toast('Button duplicated!');
     } else {

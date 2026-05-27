@@ -387,6 +387,7 @@ if (preg_match('#^/admin/pages/(\d+)/buttons$#', $path, $m)) {
     }
     if ($METHOD === 'POST') {
         role_check($user, $EDIT);
+        error_log('REQ_BODY ' . json_encode($BODY));
         $label = $BODY['label'] ?? ''; $url = $BODY['url'] ?? '';
         if (!$label || !$url) err('Label and URL are required.');
         $max = db()->querySingle("SELECT COALESCE(MAX(sort_order),-1) FROM buttons WHERE page_id=$pid");
