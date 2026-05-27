@@ -1,9 +1,9 @@
 'use strict';
 const router = require('express').Router();
-const db     = require('../db');
+const db = require('../db');
 const { verify, requireRole } = require('../middleware/auth');
 
-const MGR  = ['super_admin', 'marketing_manager'];
+const MGR = ['super_admin', 'marketing_manager'];
 const EDIT = ['super_admin', 'marketing_manager', 'store_manager'];
 
 // ── Dashboard ─────────────────────────────────────────────────────────
@@ -75,12 +75,12 @@ router.put('/admin/pages/:id', verify, requireRole(...EDIT), (req, res) => {
         is_active = ?, theme = ?, updated_at = datetime('now')
       WHERE id = ?
     `).run(
-      title       ?? page.title,
+      title ?? page.title,
       safeSlug,
-      headline    ?? page.headline,
-      store_slug  ?? page.store_slug,
-      is_active   ?? page.is_active,
-      theme       ?? page.theme,
+      headline ?? page.headline,
+      store_slug ?? page.store_slug,
+      is_active ?? page.is_active,
+      theme ?? page.theme,
       page.id
     );
     res.json({ ok: true, data: { page: db.prepare('SELECT * FROM pages WHERE id = ?').get(page.id) } });
@@ -104,7 +104,7 @@ router.post('/admin/pages/:id/duplicate', verify, requireRole(...MGR), (req, res
   if (!src) return res.status(404).json({ ok: false, error: 'Page not found' });
 
   const newSlug = `${src.slug}-copy-${Date.now()}`;
-  const result  = db.prepare(
+  const result = db.prepare(
     `INSERT INTO pages (title, slug, headline, store_slug, theme) VALUES (?, ?, ?, ?, ?)`
   ).run(`${src.title} (Copy)`, newSlug, src.headline, src.store_slug, src.theme);
   const newPage = db.prepare('SELECT * FROM pages WHERE id = ?').get(result.lastInsertRowid);
@@ -136,7 +136,9 @@ router.post('/admin/pages/:id/buttons', verify, requireRole(...EDIT), (req, res)
   const page = db.prepare('SELECT * FROM pages WHERE id = ?').get(req.params.id);
   if (!page) return res.status(404).json({ ok: false, error: 'Page not found' });
 
-  const { label, url, icon, sort_order, is_active, is_featured, enabled, start_at, end_at } = req.body || {};
+  const { label, url, icon, sort_order, is_active, is_featured, enabled, opens_in_new_tab, start_at, end_at } = req.body || {};
+  console.log('REQ_BODY', JSON.stringify(req.body, null, 2));
+
   if (!label || !url) {
     return res.status(400).json({ ok: false, error: 'Label and URL required' });
   }
@@ -146,16 +148,17 @@ router.post('/admin/pages/:id/buttons', verify, requireRole(...EDIT), (req, res)
   ).get(page.id);
 
   const result = db.prepare(`
-    INSERT INTO buttons (page_id, label, url, icon, sort_order, is_active, is_featured, enabled, start_at, end_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO buttons (page_id, label, url, icon, sort_order, is_active, is_featured, enabled, opens_in_new_tab, start_at, end_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     page.id, label, url, icon || null,
     sort_order ?? maxOrder + 1,
-    is_active   ?? 1,
+    is_active ?? 1,
     is_featured ?? 0,
-    enabled     ?? 1,
-    start_at    || null,
-    end_at      || null
+    enabled ?? 1,
+    opens_in_new_tab ?? 1,
+    start_at || null,
+    end_at || null
   );
 
   const button = db.prepare('SELECT * FROM buttons WHERE id = ?').get(result.lastInsertRowid);
@@ -192,21 +195,22 @@ router.put('/admin/buttons/:id', verify, requireRole(...EDIT), (req, res) => {
   const button = db.prepare('SELECT * FROM buttons WHERE id = ?').get(req.params.id);
   if (!button) return res.status(404).json({ ok: false, error: 'Button not found' });
 
-  const { label, url, icon, sort_order, is_active, is_featured, enabled, start_at, end_at } = req.body || {};
+  const { label, url, icon, sort_order, is_active, is_featured, enabled, opens_in_new_tab, start_at, end_at } = req.body || {};
   db.prepare(`
     UPDATE buttons SET label = ?, url = ?, icon = ?, sort_order = ?, is_active = ?,
-      is_featured = ?, enabled = ?, start_at = ?, end_at = ?, updated_at = datetime('now')
+      is_featured = ?, enabled = ?, opens_in_new_tab = ?, start_at = ?, end_at = ?, updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    label       ?? button.label,
-    url         ?? button.url,
-    icon        ?? button.icon,
-    sort_order  ?? button.sort_order,
-    is_active   ?? button.is_active,
+    label ?? button.label,
+    url ?? button.url,
+    icon ?? button.icon,
+    sort_order ?? button.sort_order,
+    is_active ?? button.is_active,
     is_featured ?? button.is_featured,
-    enabled     ?? button.enabled,
-    start_at    ?? button.start_at,
-    end_at      ?? button.end_at,
+    enabled ?? button.enabled,
+    opens_in_new_tab ?? button.opens_in_new_tab,
+    start_at ?? button.start_at,
+    end_at ?? button.end_at,
     button.id
   );
   res.json({ ok: true, data: { button: db.prepare('SELECT * FROM buttons WHERE id = ?').get(button.id) } });
@@ -287,7 +291,7 @@ router.delete('/admin/shortlinks/:id', verify, requireRole(...MGR), (req, res) =
 
 router.get('/admin/analytics', verify, requireRole(...MGR), (req, res) => {
   const period = req.query.period || '7d';
-  const days   = Math.min(Math.max(parseInt(period) || 7, 1), 365);
+  const days = Math.min(Math.max(parseInt(period) || 7, 1), 365);
 
   const clicks = db.prepare(`
     SELECT DATE(created_at) AS date, COUNT(*) AS count
@@ -321,7 +325,7 @@ router.get('/admin/analytics', verify, requireRole(...MGR), (req, res) => {
 
 router.get('/admin/pages/:id/analytics', verify, (req, res) => {
   const period = req.query.period || '7d';
-  const days   = Math.min(Math.max(parseInt(period) || 7, 1), 365);
+  const days = Math.min(Math.max(parseInt(period) || 7, 1), 365);
 
   const { total } = db.prepare(`
     SELECT COUNT(*) AS total FROM analytics
@@ -383,7 +387,7 @@ router.post('/admin/users', verify, requireRole('super_admin'), (req, res) => {
     return res.status(400).json({ ok: false, error: 'Invalid role' });
   }
   try {
-    const hash   = require('bcryptjs').hashSync(password, 10);
+    const hash = require('bcryptjs').hashSync(password, 10);
     const result = db.prepare(
       `INSERT INTO users (email, password_hash, name, role, store_slug) VALUES (?, ?, ?, ?, ?)`
     ).run(email.toLowerCase().trim(), hash, name || null, role, store_slug || null);
@@ -428,7 +432,7 @@ router.delete('/admin/users/:id', verify, requireRole('super_admin'), (req, res)
 // ── Settings ──────────────────────────────────────────────────────────
 
 router.get('/admin/settings', verify, requireRole(...MGR), (req, res) => {
-  const rows     = db.prepare('SELECT key, value FROM settings').all();
+  const rows = db.prepare('SELECT key, value FROM settings').all();
   const settings = Object.fromEntries(rows.map(r => [r.key, r.value]));
   res.json({ ok: true, data: { settings } });
 });

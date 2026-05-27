@@ -1590,7 +1590,6 @@
     const payload = {
       ...vals,
       sort_order: state.currentButtons.length,
-      enabled: 1, is_active: 1,
     };
     console.log('BUTTON_PAYLOAD', payload);
     const res = await POST('/admin/pages/' + p.id + '/buttons', payload);
