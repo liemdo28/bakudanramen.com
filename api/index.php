@@ -387,7 +387,8 @@ if (preg_match('#^/admin/pages/(\d+)/buttons$#', $path, $m)) {
     }
     if ($METHOD === 'POST') {
         role_check($user, $EDIT);
-        $label = $BODY['label'] ?? ''; $url = $BODY['url'] ?? '';
+        $label = trim((string)($BODY['label'] ?? $BODY['title'] ?? ''));
+        $url = trim((string)($BODY['url'] ?? ''));
         if (!$label || !$url) err('Label and URL are required.');
         $max = db()->querySingle("SELECT COALESCE(MAX(sort_order),-1) FROM buttons WHERE page_id=$pid");
         $id = run("INSERT INTO buttons (page_id,label,url,icon,sort_order,is_active,is_featured,enabled,start_at,end_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -415,8 +416,11 @@ if (preg_match('#^/admin/buttons/(\d+)$#', $path, $m)) {
     if (!$btn) err('Button not found.', 404);
     if ($METHOD === 'PUT') {
         role_check($user, $EDIT);
+        $label = trim((string)($BODY['label'] ?? $BODY['title'] ?? $btn['label']));
+        $url = trim((string)($BODY['url'] ?? $btn['url']));
+        if (!$label || !$url) err('Label and URL are required.');
         run("UPDATE buttons SET label=?,url=?,icon=?,sort_order=?,is_active=?,is_featured=?,enabled=?,start_at=?,end_at=?,updated_at=datetime('now') WHERE id=?",
-            [$BODY['label']??$btn['label'],$BODY['url']??$btn['url'],$BODY['icon']??$btn['icon'],
+            [$label,$url,$BODY['icon']??$btn['icon'],
              $BODY['sort_order']??$btn['sort_order'],$BODY['is_active']??$btn['is_active'],
              $BODY['is_featured']??$btn['is_featured'],$BODY['enabled']??$btn['enabled'],
              $BODY['start_at']??$btn['start_at'],$BODY['end_at']??$btn['end_at'],$bid]);
