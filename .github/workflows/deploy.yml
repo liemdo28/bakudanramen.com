@@ -26,7 +26,6 @@ jobs:
             --exclude='server' \
             --exclude='qa' \
             --exclude='/stories' \
-            --exclude='links-admin/._*' \
             --exclude='Walkthrough' \
             --exclude='*.md' \
             --exclude='package*.json' \
@@ -34,17 +33,17 @@ jobs:
             --exclude='*.sh' \
             --exclude='.htpasswd' \
             --exclude='.env*' \
+            --include='links-admin/**' \
             ./ /tmp/deploy/
 
-      - name: Deploy via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy via SCP
+        uses: appleboy/scp-action@master
         with:
-          server: ${{ secrets.HOST }}
+          host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: /tmp/deploy/
-          server-dir: ${{ secrets.TARGET_DIR || '/bakudanramen.com/' }}
-          timeout: 60000
-          log-level: standard
+          port: ${{ secrets.PORT || '22' }}
+          source: "/tmp/deploy/*"
+          target: "${{ secrets.TARGET_DIR || '/bakudanramen.com' }}"
+          strip_components: 1
+          overwrite: true
