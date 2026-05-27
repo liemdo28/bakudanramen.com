@@ -33,6 +33,7 @@ jobs:
             --exclude='*.sh' \
             --exclude='.htpasswd' \
             --exclude='.env*' \
+            --include='links-admin/' \
             --include='links-admin/**' \
             ./ /tmp/deploy/
 
@@ -43,7 +44,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.PORT || '22' }}
-          source: "/tmp/deploy/*"
+          source: "/tmp/deploy/"
           target: "${{ secrets.TARGET_DIR || '/bakudanramen.com' }}"
           strip_components: 1
           overwrite: true
