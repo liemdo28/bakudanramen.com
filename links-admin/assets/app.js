@@ -4,149 +4,149 @@
  * Talks to /wp-json/bkdn/v1/ REST endpoints
  */
 (function () {
-'use strict';
+  'use strict';
 
-/* ═══════════════════════════════════════════════════════════════════
-   CONFIG & STATE
-═══════════════════════════════════════════════════════════════════ */
-const CFG = window.BKDN_CONFIG || {};
-const REST = (CFG.rest || '').replace(/\/$/, '');
+  /* ═══════════════════════════════════════════════════════════════════
+     CONFIG & STATE
+  ═══════════════════════════════════════════════════════════════════ */
+  const CFG = window.BKDN_CONFIG || {};
+  const REST = (CFG.rest || '').replace(/\/$/, '');
 
-const state = {
-  token: localStorage.getItem('bkdn_token') || null,
-  user:  JSON.parse(localStorage.getItem('bkdn_user') || 'null'),
-  currentPage: null,   // page object being edited
-  currentButtons: [],  // buttons for current page editor
-  dragSrc: null,       // drag-and-drop source element
-};
-
-/* ═══════════════════════════════════════════════════════════════════
-   API CLIENT
-═══════════════════════════════════════════════════════════════════ */
-async function api(method, path, body = null) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
+  const state = {
+    token: localStorage.getItem('bkdn_token') || null,
+    user: JSON.parse(localStorage.getItem('bkdn_user') || 'null'),
+    currentPage: null,   // page object being edited
+    currentButtons: [],  // buttons for current page editor
+    dragSrc: null,       // drag-and-drop source element
   };
-  if (state.token) opts.headers['Authorization'] = 'Bearer ' + state.token;
-  if (body !== null) opts.body = JSON.stringify(body);
 
-  const res = await fetch(REST + path, opts);
+  /* ═══════════════════════════════════════════════════════════════════
+     API CLIENT
+  ═══════════════════════════════════════════════════════════════════ */
+  async function api(method, path, body = null) {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (state.token) opts.headers['Authorization'] = 'Bearer ' + state.token;
+    if (body !== null) opts.body = JSON.stringify(body);
 
-  if (res.status === 401 && path !== '/auth/login') {
-    logout(true);
-    return null;
+    const res = await fetch(REST + path, opts);
+
+    if (res.status === 401 && path !== '/auth/login') {
+      logout(true);
+      return null;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
   }
 
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
-}
+  const GET = (path) => api('GET', path);
+  const POST = (path, body) => api('POST', path, body);
+  const PUT = (path, body) => api('PUT', path, body);
+  const PATCH = (path, body) => api('PATCH', path, body);
+  const DELETE = (path) => api('DELETE', path);
 
-const GET    = (path)        => api('GET',    path);
-const POST   = (path, body)  => api('POST',   path, body);
-const PUT    = (path, body)  => api('PUT',    path, body);
-const PATCH  = (path, body)  => api('PATCH',  path, body);
-const DELETE = (path)        => api('DELETE', path);
+  /* ═══════════════════════════════════════════════════════════════════
+     AUTH
+  ═══════════════════════════════════════════════════════════════════ */
+  function saveAuth(token, user) {
+    state.token = token;
+    state.user = user;
+    localStorage.setItem('bkdn_token', token);
+    localStorage.setItem('bkdn_user', JSON.stringify(user));
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   AUTH
-═══════════════════════════════════════════════════════════════════ */
-function saveAuth(token, user) {
-  state.token = token;
-  state.user  = user;
-  localStorage.setItem('bkdn_token', token);
-  localStorage.setItem('bkdn_user',  JSON.stringify(user));
-}
-
-function logout(expired = false) {
-  state.token = null;
-  state.user  = null;
-  localStorage.removeItem('bkdn_token');
-  localStorage.removeItem('bkdn_user');
-  if (expired) sessionStorage.setItem('bkdn_expired', '1');
-  navigate('/login');
-}
-
-function isLoggedIn() {
-  return !!state.token && !!state.user;
-}
-
-function can(roles) {
-  if (!state.user) return false;
-  return roles.includes(state.user.role);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   ROUTER
-═══════════════════════════════════════════════════════════════════ */
-const routes = [
-  { pattern: /^\/login$/,              view: viewLogin },
-  { pattern: /^\/dashboard$/,          view: viewDashboard },
-  { pattern: /^\/project$/,            view: viewProject },
-  { pattern: /^\/pages$/,              view: viewPages },
-  { pattern: /^\/pages\/(\d+)$/,       view: (m) => viewPageEditor(m[1]) },
-  { pattern: /^\/analytics$/,          view: viewAnalytics },
-  { pattern: /^\/subscribers$/,        view: viewSubscribers },
-  { pattern: /^\/shortlinks$/,         view: viewShortlinks },
-  { pattern: /^\/settings$/,           view: viewSettings },
-  { pattern: /^\/profile$/,            view: viewProfile },
-  { pattern: /^\/users$/,              view: viewUsers },
-  { pattern: /^\/scheduling$/,         view: viewScheduling },
-];
-
-function getHash() {
-  return window.location.hash.replace(/^#/, '') || '/dashboard';
-}
-
-function navigate(path) {
-  window.location.hash = '#' + path;
-}
-
-function router() {
-  const path = getHash();
-
-  if (!isLoggedIn() && path !== '/login') {
+  function logout(expired = false) {
+    state.token = null;
+    state.user = null;
+    localStorage.removeItem('bkdn_token');
+    localStorage.removeItem('bkdn_user');
+    if (expired) sessionStorage.setItem('bkdn_expired', '1');
     navigate('/login');
-    return;
-  }
-  if (isLoggedIn() && path === '/login') {
-    navigate('/dashboard');
-    return;
   }
 
-  for (const route of routes) {
-    const m = path.match(route.pattern);
-    if (m) {
-      renderShell();
-      route.view(m);
-      setActiveNav(path);
+  function isLoggedIn() {
+    return !!state.token && !!state.user;
+  }
+
+  function can(roles) {
+    if (!state.user) return false;
+    return roles.includes(state.user.role);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     ROUTER
+  ═══════════════════════════════════════════════════════════════════ */
+  const routes = [
+    { pattern: /^\/login$/, view: viewLogin },
+    { pattern: /^\/dashboard$/, view: viewDashboard },
+    { pattern: /^\/project$/, view: viewProject },
+    { pattern: /^\/pages$/, view: viewPages },
+    { pattern: /^\/pages\/(\d+)$/, view: (m) => viewPageEditor(m[1]) },
+    { pattern: /^\/analytics$/, view: viewAnalytics },
+    { pattern: /^\/subscribers$/, view: viewSubscribers },
+    { pattern: /^\/shortlinks$/, view: viewShortlinks },
+    { pattern: /^\/settings$/, view: viewSettings },
+    { pattern: /^\/profile$/, view: viewProfile },
+    { pattern: /^\/users$/, view: viewUsers },
+    { pattern: /^\/scheduling$/, view: viewScheduling },
+  ];
+
+  function getHash() {
+    return window.location.hash.replace(/^#/, '') || '/dashboard';
+  }
+
+  function navigate(path) {
+    window.location.hash = '#' + path;
+  }
+
+  function router() {
+    const path = getHash();
+
+    if (!isLoggedIn() && path !== '/login') {
+      navigate('/login');
       return;
     }
+    if (isLoggedIn() && path === '/login') {
+      navigate('/dashboard');
+      return;
+    }
+
+    for (const route of routes) {
+      const m = path.match(route.pattern);
+      if (m) {
+        renderShell();
+        route.view(m);
+        setActiveNav(path);
+        return;
+      }
+    }
+
+    // 404 fallback
+    renderShell();
+    setContent('<div class="empty-state"><div class="empty-state-icon">404</div><p>Page not found.</p></div>');
   }
 
-  // 404 fallback
-  renderShell();
-  setContent('<div class="empty-state"><div class="empty-state-icon">404</div><p>Page not found.</p></div>');
-}
+  window.addEventListener('hashchange', router);
 
-window.addEventListener('hashchange', router);
+  /* ═══════════════════════════════════════════════════════════════════
+     SHELL / LAYOUT
+  ═══════════════════════════════════════════════════════════════════ */
+  function renderShell() {
+    if (!isLoggedIn()) {
+      document.getElementById('app').innerHTML = '';
+      return;
+    }
 
-/* ═══════════════════════════════════════════════════════════════════
-   SHELL / LAYOUT
-═══════════════════════════════════════════════════════════════════ */
-function renderShell() {
-  if (!isLoggedIn()) {
-    document.getElementById('app').innerHTML = '';
-    return;
-  }
+    if (document.getElementById('spa-shell')) return; // already rendered
 
-  if (document.getElementById('spa-shell')) return; // already rendered
+    const u = state.user;
+    const isSuper = can(['super_admin']);
+    const isMgr = can(['super_admin', 'marketing_manager']);
 
-  const u = state.user;
-  const isSuper = can(['super_admin']);
-  const isMgr   = can(['super_admin','marketing_manager']);
-
-  document.getElementById('app').innerHTML = `
+    document.getElementById('app').innerHTML = `
     <div id="spa-shell" class="spa-shell">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
@@ -170,7 +170,7 @@ function renderShell() {
         </nav>
         <div class="sidebar-footer">
           <a class="sidebar-link" href="#/profile" data-path="/profile">
-            <span style="width:22px;height:22px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff">${(u.name||'?')[0].toUpperCase()}</span>
+            <span style="width:22px;height:22px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff">${(u.name || '?')[0].toUpperCase()}</span>
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${escHtml(u.name)}</span>
           </a>
           <button class="sidebar-link" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;color:#ef4444;font-size:13px" onclick="BKDN.logout()">
@@ -178,8 +178,8 @@ function renderShell() {
           </button>
         </div>
         <div class="sidebar-version">
-          <strong>v${escHtml(CFG.version||'—')}</strong>
-          ${CFG.project?.deployed_at ? `<br>Deployed ${new Date(CFG.project.deployed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : ''}
+          <strong>v${escHtml(CFG.version || '—')}</strong>
+          ${CFG.project?.deployed_at ? `<br>Deployed ${new Date(CFG.project.deployed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
         </div>
       </aside>
       <div class="shell-body">
@@ -200,71 +200,71 @@ function renderShell() {
       </div>
     </div>
   `;
-}
-
-function setContent(html) {
-  const el = document.getElementById('view-container');
-  if (el) el.innerHTML = html;
-}
-
-const NAV_LABELS = {
-  '/dashboard':   'Dashboard',
-  '/project':     'Project Overview',
-  '/pages':       'Pages & Buttons',
-  '/analytics':   'Analytics',
-  '/subscribers': 'Subscribers',
-  '/shortlinks':  'Shortlinks',
-  '/settings':    'Settings',
-  '/profile':     'My Profile',
-  '/users':       'Users',
-  '/scheduling':  'Scheduling',
-};
-
-function setActiveNav(path) {
-  document.querySelectorAll('.sidebar-link[data-path]').forEach(a => {
-    const p = a.dataset.path;
-    const active = path === p || (p !== '/dashboard' && path.startsWith(p));
-    a.classList.toggle('active', active);
-  });
-  // Update topbar title
-  const titleEl = document.getElementById('topbar-title');
-  if (titleEl) {
-    const base = '/' + (path.split('/')[1] || 'dashboard');
-    titleEl.textContent = NAV_LABELS[base] || 'Dashboard';
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   TOAST
-═══════════════════════════════════════════════════════════════════ */
-let toastTimer;
-function toast(msg, type = 'success') {
-  let el = document.getElementById('bkdn-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'bkdn-toast';
-    el.className = 'toast';
-    document.body.appendChild(el);
+  function setContent(html) {
+    const el = document.getElementById('view-container');
+    if (el) el.innerHTML = html;
   }
-  el.textContent = msg;
-  el.className = 'toast ' + type + ' show';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   MODAL
-═══════════════════════════════════════════════════════════════════ */
-function openModal(titleText, bodyHtml, footerHtml = '') {
-  let overlay = document.getElementById('bkdn-modal');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'bkdn-modal';
-    overlay.className = 'modal-overlay';
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-    document.body.appendChild(overlay);
+  const NAV_LABELS = {
+    '/dashboard': 'Dashboard',
+    '/project': 'Project Overview',
+    '/pages': 'Pages & Buttons',
+    '/analytics': 'Analytics',
+    '/subscribers': 'Subscribers',
+    '/shortlinks': 'Shortlinks',
+    '/settings': 'Settings',
+    '/profile': 'My Profile',
+    '/users': 'Users',
+    '/scheduling': 'Scheduling',
+  };
+
+  function setActiveNav(path) {
+    document.querySelectorAll('.sidebar-link[data-path]').forEach(a => {
+      const p = a.dataset.path;
+      const active = path === p || (p !== '/dashboard' && path.startsWith(p));
+      a.classList.toggle('active', active);
+    });
+    // Update topbar title
+    const titleEl = document.getElementById('topbar-title');
+    if (titleEl) {
+      const base = '/' + (path.split('/')[1] || 'dashboard');
+      titleEl.textContent = NAV_LABELS[base] || 'Dashboard';
+    }
   }
-  overlay.innerHTML = `
+
+  /* ═══════════════════════════════════════════════════════════════════
+     TOAST
+  ═══════════════════════════════════════════════════════════════════ */
+  let toastTimer;
+  function toast(msg, type = 'success') {
+    let el = document.getElementById('bkdn-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'bkdn-toast';
+      el.className = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = 'toast ' + type + ' show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     MODAL
+  ═══════════════════════════════════════════════════════════════════ */
+  function openModal(titleText, bodyHtml, footerHtml = '') {
+    let overlay = document.getElementById('bkdn-modal');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'bkdn-modal';
+      overlay.className = 'modal-overlay';
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title">${escHtml(titleText)}</h3>
@@ -274,41 +274,52 @@ function openModal(titleText, bodyHtml, footerHtml = '') {
       ${footerHtml ? `<div class="modal-footer">${footerHtml}</div>` : ''}
     </div>
   `;
-  overlay.classList.add('open');
-}
+    overlay.classList.add('open');
+  }
 
-function closeModal() {
-  const el = document.getElementById('bkdn-modal');
-  if (el) el.classList.remove('open');
-}
+  function closeModal() {
+    const el = document.getElementById('bkdn-modal');
+    if (el) el.classList.remove('open');
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════════════════════ */
-function escHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+  /* ═══════════════════════════════════════════════════════════════════
+     HELPERS
+  ═══════════════════════════════════════════════════════════════════ */
+  function escHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
-function fmtDate(str) {
-  if (!str) return '—';
-  return new Date(str).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-}
+  /**
+   * URL-safe attribute escaper.
+   * - Escapes & → &amp; so the browser correctly decodes it back to & in the DOM value.
+   *   (critical for query params like ?foo&bar where & would otherwise look like an entity ref)
+   * - Escapes " → &#34; for safe use in attribute value="..."
+   * - Does NOT escape < > as they are valid in URLs
+   */
+  function escUrl(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&#34;');
+  }
 
-function fmtNum(n) {
-  return Number(n || 0).toLocaleString();
-}
+  function fmtDate(str) {
+    if (!str) return '—';
+    return new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
 
-function roleLabel(role) {
-  const m = { super_admin:'Super Admin', marketing_manager:'Marketing Mgr', store_manager:'Store Mgr', viewer:'Viewer' };
-  return m[role] || role;
-}
+  function fmtNum(n) {
+    return Number(n || 0).toLocaleString();
+  }
 
-function loading() {
-  return '<div style="padding:60px;text-align:center;color:#64748b;font-size:13px">Loading&hellip;</div>';
-}
+  function roleLabel(role) {
+    const m = { super_admin: 'Super Admin', marketing_manager: 'Marketing Mgr', store_manager: 'Store Mgr', viewer: 'Viewer' };
+    return m[role] || role;
+  }
 
-function errBanner(msg, retryFn) {
-  return `
+  function loading() {
+    return '<div style="padding:60px;text-align:center;color:#64748b;font-size:13px">Loading&hellip;</div>';
+  }
+
+  function errBanner(msg, retryFn) {
+    return `
     <div style="margin:40px auto;max-width:520px;padding:20px 24px;background:#1e293b;border:1px solid #7f1d1d;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:16px">
       <div>
         <div style="color:#fca5a5;font-weight:600;margin-bottom:4px">&#9888; ${escHtml(msg)}</div>
@@ -316,52 +327,52 @@ function errBanner(msg, retryFn) {
       </div>
       <button class="btn btn-danger btn-sm" onclick="${retryFn}">Retry</button>
     </div>`;
-}
+  }
 
-function pageTitle(title, sub = '') {
-  return `<div class="page-header">
+  function pageTitle(title, sub = '') {
+    return `<div class="page-header">
     <div>
       <h1 class="page-title">${escHtml(title)}</h1>
       ${sub ? `<p class="page-sub">${escHtml(sub)}</p>` : ''}
     </div>
   </div>`;
-}
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   SVG ICONS (inline)
-═══════════════════════════════════════════════════════════════════ */
-const iconDash  = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`;
-const iconPages = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
-const iconChart = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
-const iconUsers = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
-const iconLink  = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
-const iconCog   = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
-const iconShield= () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
-const iconLogout= () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
-const iconPlus  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-const iconEdit  = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-const iconTrash = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
-const iconCopy  = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-const iconExt   = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
-const iconDrag  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
-const iconQR      = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="16" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>`;
-const iconProject = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
-const iconCalendar = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-const iconSync     = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
-const iconWarning  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-const iconPublish  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
+  /* ═══════════════════════════════════════════════════════════════════
+     SVG ICONS (inline)
+  ═══════════════════════════════════════════════════════════════════ */
+  const iconDash = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`;
+  const iconPages = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+  const iconChart = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
+  const iconUsers = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+  const iconLink = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+  const iconCog = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+  const iconShield = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  const iconLogout = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
+  const iconPlus = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const iconEdit = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const iconTrash = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+  const iconCopy = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  const iconExt = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+  const iconDrag = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
+  const iconQR = () => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="16" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>`;
+  const iconProject = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+  const iconCalendar = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  const iconSync = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+  const iconWarning = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  const iconPublish = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: LOGIN
-═══════════════════════════════════════════════════════════════════ */
-function viewLogin() {
-  document.getElementById('spa-shell')?.remove();
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: LOGIN
+  ═══════════════════════════════════════════════════════════════════ */
+  function viewLogin() {
+    document.getElementById('spa-shell')?.remove();
 
-  // Detect session-expired flag set by logout()
-  const expired = sessionStorage.getItem('bkdn_expired');
-  if (expired) sessionStorage.removeItem('bkdn_expired');
+    // Detect session-expired flag set by logout()
+    const expired = sessionStorage.getItem('bkdn_expired');
+    if (expired) sessionStorage.removeItem('bkdn_expired');
 
-  document.getElementById('app').innerHTML = `
+    document.getElementById('app').innerHTML = `
     <div class="login-page">
       ${expired ? `
         <div class="login-session-banner">
@@ -436,142 +447,142 @@ function viewLogin() {
     </div>
   `;
 
-  // ── Password show/hide toggle ──────────────────────────────────
-  const pwdInput = document.getElementById('login-pwd');
-  document.getElementById('pwd-toggle').addEventListener('click', () => {
-    const show = pwdInput.type === 'password';
-    pwdInput.type = show ? 'text' : 'password';
-    document.getElementById('eye-icon').innerHTML = show
-      ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
-      : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
-  });
+    // ── Password show/hide toggle ──────────────────────────────────
+    const pwdInput = document.getElementById('login-pwd');
+    document.getElementById('pwd-toggle').addEventListener('click', () => {
+      const show = pwdInput.type === 'password';
+      pwdInput.type = show ? 'text' : 'password';
+      document.getElementById('eye-icon').innerHTML = show
+        ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
+        : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    });
 
-  // ── Field validators ───────────────────────────────────────────
-  function showFieldError(id, msg) {
-    const el = document.getElementById(id);
-    el.querySelector('span').textContent = msg;
-    el.classList.add('show');
+    // ── Field validators ───────────────────────────────────────────
+    function showFieldError(id, msg) {
+      const el = document.getElementById(id);
+      el.querySelector('span').textContent = msg;
+      el.classList.add('show');
+    }
+    function clearFieldError(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+    function showAlert(msg) {
+      document.getElementById('login-alert-msg').textContent = msg;
+      document.getElementById('login-alert').classList.add('show');
+    }
+    function clearAlert() {
+      document.getElementById('login-alert').classList.remove('show');
+    }
+
+    // Clear field errors on input
+    document.getElementById('login-email').addEventListener('input', () => clearFieldError('err-email'));
+    document.getElementById('login-pwd').addEventListener('input', () => clearFieldError('err-pwd'));
+
+    // ── Form submit ────────────────────────────────────────────────
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      clearAlert();
+      clearFieldError('err-email');
+      clearFieldError('err-pwd');
+
+      const email = document.getElementById('login-email').value.trim();
+      const pwd = document.getElementById('login-pwd').value;
+      let valid = true;
+
+      if (!email) {
+        showFieldError('err-email', 'Please enter your admin email.');
+        valid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showFieldError('err-email', 'Please enter a valid email address.');
+        valid = false;
+      }
+
+      if (!pwd) {
+        showFieldError('err-pwd', 'Please enter your password.');
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.classList.add('loading');
+
+      const res = await POST('/auth/login', { email, password: pwd }).catch(() => null);
+
+      btn.disabled = false;
+      btn.classList.remove('loading');
+
+      if (!res) {
+        showAlert('Something went wrong. Please try again.');
+        return;
+      }
+      if (res.ok && res.data.success) {
+        saveAuth(res.data.token, res.data.user);
+        navigate('/dashboard');
+        return;
+      }
+
+      // Map backend messages to user-friendly copy
+      const msg = res.data?.message || '';
+      if (/inactive/i.test(msg)) {
+        showAlert('This account is inactive. Please contact the administrator.');
+      } else if (/password/i.test(msg) || /email/i.test(msg) || res.status === 401) {
+        showAlert('Invalid email or password.');
+      } else {
+        showAlert('Something went wrong. Please try again.');
+      }
+    });
+
+    // Enter key on any field submits form
+    document.getElementById('login-email').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('login-form').requestSubmit();
+    });
+
+    // Focus email on load
+    setTimeout(() => document.getElementById('login-email')?.focus(), 50);
   }
-  function clearFieldError(id) {
-    document.getElementById(id).classList.remove('show');
-  }
-  function showAlert(msg) {
-    document.getElementById('login-alert-msg').textContent = msg;
-    document.getElementById('login-alert').classList.add('show');
-  }
-  function clearAlert() {
-    document.getElementById('login-alert').classList.remove('show');
-  }
 
-  // Clear field errors on input
-  document.getElementById('login-email').addEventListener('input', () => clearFieldError('err-email'));
-  document.getElementById('login-pwd').addEventListener('input',   () => clearFieldError('err-pwd'));
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: PROJECT OVERVIEW (Agency Hub)
+  ═══════════════════════════════════════════════════════════════════ */
+  function viewProject() {
+    const P = CFG.project || {};
+    const resources = P.resources || [];
+    const stores = P.stores || [];
+    const notes = P.notes || [];
 
-  // ── Form submit ────────────────────────────────────────────────
-  document.getElementById('login-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    clearAlert();
-    clearFieldError('err-email');
-    clearFieldError('err-pwd');
+    const deployedAt = P.deployed_at
+      ? new Date(P.deployed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '—';
 
-    const email = document.getElementById('login-email').value.trim();
-    const pwd   = document.getElementById('login-pwd').value;
-    let valid   = true;
+    // Status badge
+    const statusBadge = {
+      active: '<span class="badge badge-green">&#9679; Active</span>',
+      maintenance: '<span class="badge badge-yellow">&#9651; Maintenance</span>',
+      issue: '<span class="badge badge-red">&#9888; Issue</span>',
+    }[P.status] || '<span class="badge badge-gray">Unknown</span>';
 
-    if (!email) {
-      showFieldError('err-email', 'Please enter your admin email.');
-      valid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      showFieldError('err-email', 'Please enter a valid email address.');
-      valid = false;
-    }
+    // Resource type icons
+    const resIcons = {
+      website: '&#127760;',
+      public_links: '&#128279;',
+      admin_console: '&#9881;&#65039;',
+    };
+    const resColors = {
+      website: '#1e3a5f',
+      public_links: '#14532d',
+      admin_console: '#422006',
+    };
+    const resBadgeColors = {
+      website: '#93c5fd',
+      public_links: '#86efac',
+      admin_console: '#fde68a',
+    };
 
-    if (!pwd) {
-      showFieldError('err-pwd', 'Please enter your password.');
-      valid = false;
-    }
-
-    if (!valid) return;
-
-    const btn = document.getElementById('login-btn');
-    btn.disabled = true;
-    btn.classList.add('loading');
-
-    const res = await POST('/auth/login', { email, password: pwd }).catch(() => null);
-
-    btn.disabled = false;
-    btn.classList.remove('loading');
-
-    if (!res) {
-      showAlert('Something went wrong. Please try again.');
-      return;
-    }
-    if (res.ok && res.data.success) {
-      saveAuth(res.data.token, res.data.user);
-      navigate('/dashboard');
-      return;
-    }
-
-    // Map backend messages to user-friendly copy
-    const msg = res.data?.message || '';
-    if (/inactive/i.test(msg)) {
-      showAlert('This account is inactive. Please contact the administrator.');
-    } else if (/password/i.test(msg) || /email/i.test(msg) || res.status === 401) {
-      showAlert('Invalid email or password.');
-    } else {
-      showAlert('Something went wrong. Please try again.');
-    }
-  });
-
-  // Enter key on any field submits form
-  document.getElementById('login-email').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('login-form').requestSubmit();
-  });
-
-  // Focus email on load
-  setTimeout(() => document.getElementById('login-email')?.focus(), 50);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: PROJECT OVERVIEW (Agency Hub)
-═══════════════════════════════════════════════════════════════════ */
-function viewProject() {
-  const P = CFG.project || {};
-  const resources = P.resources || [];
-  const stores    = P.stores    || [];
-  const notes     = P.notes     || [];
-
-  const deployedAt = P.deployed_at
-    ? new Date(P.deployed_at).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })
-    : '—';
-
-  // Status badge
-  const statusBadge = {
-    active:      '<span class="badge badge-green">&#9679; Active</span>',
-    maintenance: '<span class="badge badge-yellow">&#9651; Maintenance</span>',
-    issue:       '<span class="badge badge-red">&#9888; Issue</span>',
-  }[P.status] || '<span class="badge badge-gray">Unknown</span>';
-
-  // Resource type icons
-  const resIcons = {
-    website:       '&#127760;',
-    public_links:  '&#128279;',
-    admin_console: '&#9881;&#65039;',
-  };
-  const resColors = {
-    website:       '#1e3a5f',
-    public_links:  '#14532d',
-    admin_console: '#422006',
-  };
-  const resBadgeColors = {
-    website:       '#93c5fd',
-    public_links:  '#86efac',
-    admin_console: '#fde68a',
-  };
-
-  const resourceCards = resources.map(r => `
-    <div class="proj-resource-card" style="border-left:3px solid ${resBadgeColors[r.type]||'#334155'}">
-      <div class="proj-resource-icon" style="background:${resColors[r.type]||'#1e293b'};color:${resBadgeColors[r.type]||'#94a3b8'}">${resIcons[r.type]||'&#128279;'}</div>
+    const resourceCards = resources.map(r => `
+    <div class="proj-resource-card" style="border-left:3px solid ${resBadgeColors[r.type] || '#334155'}">
+      <div class="proj-resource-icon" style="background:${resColors[r.type] || '#1e293b'};color:${resBadgeColors[r.type] || '#94a3b8'}">${resIcons[r.type] || '&#128279;'}</div>
       <div class="proj-resource-body">
         <div class="proj-resource-label">${escHtml(r.label)}</div>
         <div class="proj-resource-desc">${escHtml(r.desc)}</div>
@@ -583,7 +594,7 @@ function viewProject() {
     </div>
   `).join('');
 
-  const storeRows = stores.map(s => `
+    const storeRows = stores.map(s => `
     <tr>
       <td style="font-weight:500;color:#e2e8f0">${escHtml(s.name)}</td>
       <td><code>${escHtml(s.slug)}</code></td>
@@ -594,14 +605,14 @@ function viewProject() {
     </tr>
   `).join('');
 
-  const notesHtml = notes.map(n => `
+    const notesHtml = notes.map(n => `
     <li class="proj-note">
       <span class="proj-note-icon">&#8618;</span>
       ${escHtml(n)}
     </li>
   `).join('');
 
-  setContent(`
+    setContent(`
     <!-- HEADER -->
     <div class="proj-header">
       <div class="proj-header-left">
@@ -611,7 +622,7 @@ function viewProject() {
       </div>
       <div class="proj-header-meta">
         ${statusBadge}
-        <span class="badge badge-blue">v${escHtml(P.version||'—')}</span>
+        <span class="badge badge-blue">v${escHtml(P.version || '—')}</span>
       </div>
     </div>
 
@@ -619,15 +630,15 @@ function viewProject() {
     <div class="proj-meta-row">
       <div class="proj-meta-item">
         <span class="proj-meta-label">Owner</span>
-        <span class="proj-meta-value">${escHtml(P.owner_team||'—')}</span>
+        <span class="proj-meta-value">${escHtml(P.owner_team || '—')}</span>
       </div>
       <div class="proj-meta-item">
         <span class="proj-meta-label">Support</span>
-        <span class="proj-meta-value"><a href="mailto:${escHtml(P.support||'')}" style="color:#94a3b8">${escHtml(P.support||'—')}</a></span>
+        <span class="proj-meta-value"><a href="mailto:${escHtml(P.support || '')}" style="color:#94a3b8">${escHtml(P.support || '—')}</a></span>
       </div>
       <div class="proj-meta-item">
         <span class="proj-meta-label">Environment</span>
-        <span class="proj-meta-value"><span class="badge badge-green">${escHtml(P.environment||'production')}</span></span>
+        <span class="proj-meta-value"><span class="badge badge-green">${escHtml(P.environment || 'production')}</span></span>
       </div>
       <div class="proj-meta-item">
         <span class="proj-meta-label">Last Deployed</span>
@@ -635,7 +646,7 @@ function viewProject() {
       </div>
       <div class="proj-meta-item">
         <span class="proj-meta-label">Repository</span>
-        <span class="proj-meta-value">${P.git_repo ? `<a href="${escHtml(P.git_repo)}" target="_blank" style="color:#94a3b8;font-size:12px">${escHtml(P.git_repo.replace('https://',''))}</a>` : '—'}</span>
+        <span class="proj-meta-value">${P.git_repo ? `<a href="${escHtml(P.git_repo)}" target="_blank" style="color:#94a3b8;font-size:12px">${escHtml(P.git_repo.replace('https://', ''))}</a>` : '—'}</span>
       </div>
     </div>
 
@@ -669,12 +680,12 @@ function viewProject() {
       </div>
       <div class="proj-flow">
         ${[
-          { step:'1', label:'Open Dashboard',   desc:'Navigate to /links-admin and login with your admin email.',   action:`<a href="#/dashboard" class="btn btn-ghost btn-sm">Open Dashboard</a>` },
-          { step:'2', label:'Select a Page',    desc:'Go to Pages & Buttons. Choose the store you want to update.', action:`<a href="#/pages" class="btn btn-ghost btn-sm">Go to Pages</a>` },
-          { step:'3', label:'Manage Buttons',   desc:'Toggle visibility, edit URLs, reorder, schedule — all from the Buttons tab.', action:'' },
-          { step:'4', label:'Publish Changes',  desc:'Use Publish/Unpublish in the page editor. Changes are instant — no deployment.', action:'' },
-          { step:'5', label:'Verify on /links', desc:'Open the public page to confirm changes are live.',                             action:`<a href="${escHtml(CFG.siteUrl)}/links/" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} View /links</a>` },
-        ].map(s => `
+        { step: '1', label: 'Open Dashboard', desc: 'Navigate to /links-admin and login with your admin email.', action: `<a href="#/dashboard" class="btn btn-ghost btn-sm">Open Dashboard</a>` },
+        { step: '2', label: 'Select a Page', desc: 'Go to Pages & Buttons. Choose the store you want to update.', action: `<a href="#/pages" class="btn btn-ghost btn-sm">Go to Pages</a>` },
+        { step: '3', label: 'Manage Buttons', desc: 'Toggle visibility, edit URLs, reorder, schedule — all from the Buttons tab.', action: '' },
+        { step: '4', label: 'Publish Changes', desc: 'Use Publish/Unpublish in the page editor. Changes are instant — no deployment.', action: '' },
+        { step: '5', label: 'Verify on /links', desc: 'Open the public page to confirm changes are live.', action: `<a href="${escHtml(CFG.siteUrl)}/links/" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} View /links</a>` },
+      ].map(s => `
           <div class="proj-flow-step">
             <div class="proj-flow-num">${s.step}</div>
             <div class="proj-flow-body">
@@ -702,9 +713,9 @@ function viewProject() {
       <div class="proj-actions-grid">
         ${resources.map(r => `
           <a href="${escHtml(r.url)}" target="_blank" rel="noopener" class="proj-action-btn">
-            <span class="proj-action-icon">${resIcons[r.type]||'&#128279;'}</span>
+            <span class="proj-action-icon">${resIcons[r.type] || '&#128279;'}</span>
             <span class="proj-action-label">${escHtml(r.label)}</span>
-            <span class="proj-action-sub">${escHtml(r.url.replace('https://',''))}</span>
+            <span class="proj-action-sub">${escHtml(r.url.replace('https://', ''))}</span>
           </a>
         `).join('')}
         <a href="#/pages" class="proj-action-btn">
@@ -725,71 +736,71 @@ function viewProject() {
       </div>
     </div>
   `);
-}
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: DASHBOARD
-═══════════════════════════════════════════════════════════════════ */
-async function viewDashboard() {
-  setContent(loading());
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: DASHBOARD
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewDashboard() {
+    setContent(loading());
 
-  const [statsRes, pagesRes] = await Promise.all([
-    GET('/admin/dashboard'),
-    GET('/admin/pages'),
-  ]);
+    const [statsRes, pagesRes] = await Promise.all([
+      GET('/admin/dashboard'),
+      GET('/admin/pages'),
+    ]);
 
-  if (!statsRes?.ok) {
-    setContent(`
+    if (!statsRes?.ok) {
+      setContent(`
       <div class="alert-error" style="margin:40px auto;max-width:480px;padding:20px;background:#450a0a;border:1px solid #7f1d1d;border-radius:10px;color:#fca5a5;text-align:center">
         <div style="font-size:24px;margin-bottom:8px">&#9888;</div>
         <div style="font-weight:600;margin-bottom:4px">Dashboard failed to load</div>
         <div style="font-size:13px;margin-bottom:16px;color:#f87171">Check that you are logged in and the API is reachable.</div>
         <button class="btn btn-danger" onclick="BKDN.viewDashboard()">Retry</button>
       </div>`);
-    return;
-  }
+      return;
+    }
 
-  const d     = statsRes.data.dashboard || {};
-  const pages = pagesRes?.data?.pages   || [];
+    const d = statsRes.data.dashboard || {};
+    const pages = pagesRes?.data?.pages || [];
 
-  // Compute enhanced KPIs from pages list
-  const now = new Date();
-  let liveCnt = 0, hiddenCnt = 0, schedCnt = 0, expiredCnt = 0, featuredCnt = 0;
-  pages.forEach(p => {
-    if (!p.is_active) { hiddenCnt++; return; }
-    if (p.expires_at && new Date(p.expires_at) < now) { expiredCnt++; return; }
-    if (p.published_at && new Date(p.published_at) > now) { schedCnt++; return; }
-    liveCnt++;
-  });
+    // Compute enhanced KPIs from pages list
+    const now = new Date();
+    let liveCnt = 0, hiddenCnt = 0, schedCnt = 0, expiredCnt = 0, featuredCnt = 0;
+    pages.forEach(p => {
+      if (!p.is_active) { hiddenCnt++; return; }
+      if (p.expires_at && new Date(p.expires_at) < now) { expiredCnt++; return; }
+      if (p.published_at && new Date(p.published_at) > now) { schedCnt++; return; }
+      liveCnt++;
+    });
 
-  const kpiHtml = [
-    { label:'Total Pages',  value: pages.length,         cls:'',        icon:'&#128196;' },
-    { label:'Live',         value: liveCnt,               cls:'kpi--live',  icon:'&#9679;' },
-    { label:'Hidden',       value: hiddenCnt,             cls:'kpi--hidden',icon:'&#9673;' },
-    { label:'Scheduled',    value: schedCnt,              cls:'kpi--sched', icon:'&#128197;' },
-    { label:'Views (24h)',  value: fmtNum(d.views_24h),  cls:'kpi--views', icon:'&#128065;' },
-    { label:'Clicks (24h)', value: fmtNum(d.clicks_24h), cls:'kpi--clicks',icon:'&#128070;' },
-  ].map(k => `
+    const kpiHtml = [
+      { label: 'Total Pages', value: pages.length, cls: '', icon: '&#128196;' },
+      { label: 'Live', value: liveCnt, cls: 'kpi--live', icon: '&#9679;' },
+      { label: 'Hidden', value: hiddenCnt, cls: 'kpi--hidden', icon: '&#9673;' },
+      { label: 'Scheduled', value: schedCnt, cls: 'kpi--sched', icon: '&#128197;' },
+      { label: 'Views (24h)', value: fmtNum(d.views_24h), cls: 'kpi--views', icon: '&#128065;' },
+      { label: 'Clicks (24h)', value: fmtNum(d.clicks_24h), cls: 'kpi--clicks', icon: '&#128070;' },
+    ].map(k => `
     <div class="kpi-card ${k.cls}">
       <div class="kpi-label">${k.icon} ${escHtml(k.label)}</div>
       <div class="kpi-value">${k.value}</div>
     </div>
   `).join('');
 
-  // Warnings
-  const warnings = [];
-  if (expiredCnt > 0) warnings.push(`${expiredCnt} page${expiredCnt>1?'s':''} expired — review and update.`);
-  const pagesWithNoButtons = pages.filter(p => p.is_active && (d.page_button_counts?.[p.id] === 0));
-  if (pagesWithNoButtons.length) warnings.push(`${pagesWithNoButtons.length} active page${pagesWithNoButtons.length>1?'s':''} have no buttons.`);
+    // Warnings
+    const warnings = [];
+    if (expiredCnt > 0) warnings.push(`${expiredCnt} page${expiredCnt > 1 ? 's' : ''} expired — review and update.`);
+    const pagesWithNoButtons = pages.filter(p => p.is_active && (d.page_button_counts?.[p.id] === 0));
+    if (pagesWithNoButtons.length) warnings.push(`${pagesWithNoButtons.length} active page${pagesWithNoButtons.length > 1 ? 's' : ''} have no buttons.`);
 
-  const warningsHtml = warnings.length ? `
+    const warningsHtml = warnings.length ? `
     <div class="warnings-panel">
       <div class="warn-title">${iconWarning()} Attention required</div>
       <ul>${warnings.map(w => `<li>&#8618; ${escHtml(w)}</li>`).join('')}</ul>
     </div>` : '';
 
-  // Quick actions
-  const quickActionsHtml = `
+    // Quick actions
+    const quickActionsHtml = `
     <div class="dash-quick-grid">
       <button class="dash-quick-btn" onclick="BKDN.navigate_('#/pages')">
         ${iconPages()} <span class="dash-quick-label">Manage Pages</span>
@@ -814,8 +825,8 @@ async function viewDashboard() {
     </div>
   `;
 
-  // Pages management cards
-  const pageCardsHtml = pages.length ? pages.map(p => `
+    // Pages management cards
+    const pageCardsHtml = pages.length ? pages.map(p => `
     <div class="page-mgmt-card">
       <div class="page-mgmt-info">
         <div class="page-mgmt-title">${escHtml(p.title)}</div>
@@ -834,18 +845,18 @@ async function viewDashboard() {
       <p style="color:#64748b">No pages found. <a href="#/pages" style="color:#2563eb">Create one</a>.</p>
     </div>`;
 
-  const topPages = (d.top_pages || []).map(p => `
+    const topPages = (d.top_pages || []).map(p => `
     <tr>
-      <td><a href="#/pages/${p.page_id}" style="color:#94a3b8;font-weight:500">${escHtml(p.title||p.slug)}</a></td>
+      <td><a href="#/pages/${p.page_id}" style="color:#94a3b8;font-weight:500">${escHtml(p.title || p.slug)}</a></td>
       <td><code>/links/${escHtml(p.slug)}</code></td>
       <td style="text-align:right;font-weight:600">${fmtNum(p.views)}</td>
     </tr>
   `).join('') || `<tr><td colspan="3" style="text-align:center;color:#475569;padding:24px;font-size:13px">No traffic yet — share your QR codes to start collecting data.</td></tr>`;
 
-  setContent(`
+    setContent(`
     <div class="dash-welcome">
       <div>
-        <h1 class="dash-title">Good ${greeting()}, ${escHtml((state.user?.name||'').split(' ')[0] || 'Admin')}.</h1>
+        <h1 class="dash-title">Good ${greeting()}, ${escHtml((state.user?.name || '').split(' ')[0] || 'Admin')}.</h1>
         <p class="dash-sub">Here's your Links Hub at a glance.</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -879,37 +890,37 @@ async function viewDashboard() {
       </div>
     </div>
   `);
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
-  return 'evening';
-}
-
-function navigate_(hash) {
-  window.location.hash = hash;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: PAGES LIST
-═══════════════════════════════════════════════════════════════════ */
-async function viewPages() {
-  setContent(loading());
-  const res = await GET('/admin/pages');
-  if (!res?.ok) {
-    setContent(errBanner('Failed to load pages.', 'BKDN.viewPages()'));
-    return;
   }
-  const pages = res.data.pages || [];
 
-  const isMgr = can(['super_admin','marketing_manager']);
+  function greeting() {
+    const h = new Date().getHours();
+    if (h < 12) return 'morning';
+    if (h < 17) return 'afternoon';
+    return 'evening';
+  }
 
-  const rows = pages.map(p => {
-    const statusClass = p.is_active ? 'badge badge-green' : 'badge badge-gray';
-    const statusLabel = p.is_active ? 'Active' : 'Inactive';
-    return `
+  function navigate_(hash) {
+    window.location.hash = hash;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: PAGES LIST
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewPages() {
+    setContent(loading());
+    const res = await GET('/admin/pages');
+    if (!res?.ok) {
+      setContent(errBanner('Failed to load pages.', 'BKDN.viewPages()'));
+      return;
+    }
+    const pages = res.data.pages || [];
+
+    const isMgr = can(['super_admin', 'marketing_manager']);
+
+    const rows = pages.map(p => {
+      const statusClass = p.is_active ? 'badge badge-green' : 'badge badge-gray';
+      const statusLabel = p.is_active ? 'Active' : 'Inactive';
+      return `
       <tr>
         <td>
           <a href="#/pages/${p.id}" style="font-weight:600;color:#e2e8f0">${escHtml(p.title)}</a>
@@ -928,9 +939,9 @@ async function viewPages() {
         </td>
       </tr>
     `;
-  }).join('') || '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:30px">No pages yet.</td></tr>';
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:30px">No pages yet.</td></tr>';
 
-  setContent(`
+    setContent(`
     ${pageTitle('Pages', 'Manage your link hub pages')}
     <div class="card">
       <div class="card-header">
@@ -945,11 +956,11 @@ async function viewPages() {
       </div>
     </div>
   `);
-}
+  }
 
-/* ── Create page modal ──────────────────────────────────────────── */
-function openCreatePage() {
-  openModal('New Page', `
+  /* ── Create page modal ──────────────────────────────────────────── */
+  function openCreatePage() {
+    openModal('New Page', `
     <div class="form-group">
       <label class="form-label">Title</label>
       <input id="cp-title" class="form-control" placeholder="Bakudan Ramen — The Rim">
@@ -971,80 +982,80 @@ function openCreatePage() {
     <button class="btn btn-primary" onclick="BKDN.createPage()">Create Page</button>
   `);
 
-  // Auto-slug from title
-  document.getElementById('cp-title').addEventListener('input', e => {
-    const slugEl = document.getElementById('cp-slug');
-    if (!slugEl._touched) {
-      slugEl.value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g,'');
+    // Auto-slug from title
+    document.getElementById('cp-title').addEventListener('input', e => {
+      const slugEl = document.getElementById('cp-slug');
+      if (!slugEl._touched) {
+        slugEl.value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      }
+    });
+    document.getElementById('cp-slug').addEventListener('input', () => {
+      document.getElementById('cp-slug')._touched = true;
+    });
+  }
+
+  async function createPage() {
+    const title = document.getElementById('cp-title').value.trim();
+    const slug = document.getElementById('cp-slug').value.trim();
+    const headline = document.getElementById('cp-headline').value.trim();
+    const store = document.getElementById('cp-store').value.trim();
+
+    if (!title || !slug) { toast('Title and slug are required.', 'error'); return; }
+
+    const res = await POST('/admin/pages', { title, slug, headline, store_slug: store || null });
+    if (res?.ok) {
+      toast('Page created!');
+      closeModal();
+      navigate('/pages/' + res.data.id);
+    } else {
+      toast(res?.data?.message || 'Failed to create page.', 'error');
     }
-  });
-  document.getElementById('cp-slug').addEventListener('input', () => {
-    document.getElementById('cp-slug')._touched = true;
-  });
-}
-
-async function createPage() {
-  const title    = document.getElementById('cp-title').value.trim();
-  const slug     = document.getElementById('cp-slug').value.trim();
-  const headline = document.getElementById('cp-headline').value.trim();
-  const store    = document.getElementById('cp-store').value.trim();
-
-  if (!title || !slug) { toast('Title and slug are required.', 'error'); return; }
-
-  const res = await POST('/admin/pages', { title, slug, headline, store_slug: store || null });
-  if (res?.ok) {
-    toast('Page created!');
-    closeModal();
-    navigate('/pages/' + res.data.id);
-  } else {
-    toast(res?.data?.message || 'Failed to create page.', 'error');
   }
-}
 
-async function duplicatePage(id) {
-  if (!confirm('Duplicate this page?')) return;
-  const res = await POST('/admin/pages/' + id + '/duplicate', {});
-  if (res?.ok) {
-    toast('Page duplicated!');
-    navigate('/pages/' + res.data.id);
-  } else {
-    toast('Failed to duplicate page.', 'error');
+  async function duplicatePage(id) {
+    if (!confirm('Duplicate this page?')) return;
+    const res = await POST('/admin/pages/' + id + '/duplicate', {});
+    if (res?.ok) {
+      toast('Page duplicated!');
+      navigate('/pages/' + res.data.id);
+    } else {
+      toast('Failed to duplicate page.', 'error');
+    }
   }
-}
 
-async function deletePage(id, title) {
-  if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-  const res = await DELETE('/admin/pages/' + id);
-  if (res?.ok) {
-    toast('Page deleted.');
-    viewPages();
-  } else {
-    toast('Failed to delete page.', 'error');
+  async function deletePage(id, title) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    const res = await DELETE('/admin/pages/' + id);
+    if (res?.ok) {
+      toast('Page deleted.');
+      viewPages();
+    } else {
+      toast('Failed to delete page.', 'error');
+    }
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: PAGE EDITOR
-═══════════════════════════════════════════════════════════════════ */
-async function viewPageEditor(id) {
-  setContent(loading());
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: PAGE EDITOR
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewPageEditor(id) {
+    setContent(loading());
 
-  const [pRes, bRes] = await Promise.all([
-    GET('/admin/pages/' + id),
-    GET('/admin/pages/' + id + '/buttons'),
-  ]);
+    const [pRes, bRes] = await Promise.all([
+      GET('/admin/pages/' + id),
+      GET('/admin/pages/' + id + '/buttons'),
+    ]);
 
-  if (!pRes?.ok) { toast('Page not found.', 'error'); navigate('/pages'); return; }
+    if (!pRes?.ok) { toast('Page not found.', 'error'); navigate('/pages'); return; }
 
-  state.currentPage    = pRes.data.page;
-  state.currentButtons = bRes?.data?.buttons || [];
+    state.currentPage = pRes.data.page;
+    state.currentButtons = bRes?.data?.buttons || [];
 
-  const p = state.currentPage;
-  const isMgr   = can(['super_admin','marketing_manager']);
-  const canEdit  = can(['super_admin','marketing_manager','store_manager']);
-  const previewUrl = escHtml(`${CFG.siteUrl}/links/${p.slug}`);
+    const p = state.currentPage;
+    const isMgr = can(['super_admin', 'marketing_manager']);
+    const canEdit = can(['super_admin', 'marketing_manager', 'store_manager']);
+    const previewUrl = escHtml(`${CFG.siteUrl}/links/${p.slug}`);
 
-  setContent(`
+    setContent(`
     ${pageTitle(escHtml(p.title), `/${escHtml(p.slug)}`)}
     <div class="publish-bar">
       <span class="pub-status pub-status--${p.is_active ? 'published' : 'saved'}" id="pub-state-label">
@@ -1052,7 +1063,7 @@ async function viewPageEditor(id) {
       </span>
       <a href="${previewUrl}" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} Preview Live</a>
       ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="BKDN.savePage()" id="btn-save-page">Save Draft</button>` : ''}
-      ${canEdit ? `<button class="btn btn-sm btn-${p.is_active?'secondary':'primary'}" onclick="BKDN.togglePageActive()" id="btn-publish-page">${p.is_active ? 'Unpublish' : 'Publish'}</button>` : ''}
+      ${canEdit ? `<button class="btn btn-sm btn-${p.is_active ? 'secondary' : 'primary'}" onclick="BKDN.togglePageActive()" id="btn-publish-page">${p.is_active ? 'Unpublish' : 'Publish'}</button>` : ''}
       ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="BKDN.verifyPublicSync('${escHtml(p.slug)}')" title="Check public page matches admin state">${iconSync()} Verify Sync</button>` : ''}
       <a href="#/pages" class="btn btn-ghost btn-sm" style="margin-left:auto">&#8592; Back</a>
     </div>
@@ -1075,26 +1086,26 @@ async function viewPageEditor(id) {
     ${isMgr ? `<div id="tab-redirects" class="tab-pane"><div id="page-redirects-content">${loading()}</div></div>` : ''}
   `);
 
-  renderButtonList();
-}
+    renderButtonList();
+  }
 
-/* ── Tab switcher ───────────────────────────────────────────────── */
-function switchTab(btn, name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  const pane = document.getElementById('tab-' + name);
-  if (pane) pane.classList.add('active');
+  /* ── Tab switcher ───────────────────────────────────────────────── */
+  function switchTab(btn, name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const pane = document.getElementById('tab-' + name);
+    if (pane) pane.classList.add('active');
 
-  if (name === 'analytics') loadPageAnalytics();
-  if (name === 'redirects')  loadPageRedirects();
-}
+    if (name === 'analytics') loadPageAnalytics();
+    if (name === 'redirects') loadPageRedirects();
+  }
 
-/* ── Info Tab ───────────────────────────────────────────────────── */
-function buildInfoTab(p, canEdit) {
-  const dis = canEdit ? '' : ' disabled';
-  const theme = p.theme_json ? (typeof p.theme_json === 'string' ? JSON.parse(p.theme_json) : p.theme_json) : {};
-  return `
+  /* ── Info Tab ───────────────────────────────────────────────────── */
+  function buildInfoTab(p, canEdit) {
+    const dis = canEdit ? '' : ' disabled';
+    const theme = p.theme_json ? (typeof p.theme_json === 'string' ? JSON.parse(p.theme_json) : p.theme_json) : {};
+    return `
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Title</label>
@@ -1106,65 +1117,65 @@ function buildInfoTab(p, canEdit) {
       </div>
       <div class="form-group">
         <label class="form-label">Headline</label>
-        <input id="p-headline" class="form-control" value="${escHtml(p.headline||'')}"${dis}>
+        <input id="p-headline" class="form-control" value="${escHtml(p.headline || '')}"${dis}>
       </div>
       <div class="form-group">
         <label class="form-label">Subheadline</label>
-        <input id="p-subheadline" class="form-control" value="${escHtml(p.subheadline||'')}"${dis}>
+        <input id="p-subheadline" class="form-control" value="${escHtml(p.subheadline || '')}"${dis}>
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label class="form-label">SEO Description</label>
-        <textarea id="p-seo-desc" class="form-control" rows="2"${dis}>${escHtml(p.seo_desc||'')}</textarea>
+        <textarea id="p-seo-desc" class="form-control" rows="2"${dis}>${escHtml(p.seo_desc || '')}</textarea>
       </div>
       <div class="form-group">
         <label class="form-label">Store Slug <span style="color:#64748b;font-size:11px">(for multi-store filtering)</span></label>
-        <input id="p-store-slug" class="form-control" value="${escHtml(p.store_slug||'')}"${dis}>
+        <input id="p-store-slug" class="form-control" value="${escHtml(p.store_slug || '')}"${dis}>
       </div>
     </div>
   `;
-}
+  }
 
-/* ── Theme Tab ──────────────────────────────────────────────────── */
-function buildThemeTab(p, canEdit) {
-  const theme = p.theme_json ? (typeof p.theme_json === 'string' ? JSON.parse(p.theme_json) : p.theme_json) : {};
-  const dis = canEdit ? '' : ' disabled';
-  const tokens = [
-    { key:'bg_color',               label:'Background' },
-    { key:'card_color',             label:'Card Background' },
-    { key:'button_primary_color',   label:'Primary Button' },
-    { key:'button_secondary_color', label:'Secondary Button' },
-    { key:'text_primary',           label:'Primary Text' },
-    { key:'text_secondary',         label:'Secondary Text' },
-    { key:'border_color',           label:'Border' },
-    { key:'accent_color',           label:'Accent / Red' },
-  ];
+  /* ── Theme Tab ──────────────────────────────────────────────────── */
+  function buildThemeTab(p, canEdit) {
+    const theme = p.theme_json ? (typeof p.theme_json === 'string' ? JSON.parse(p.theme_json) : p.theme_json) : {};
+    const dis = canEdit ? '' : ' disabled';
+    const tokens = [
+      { key: 'bg_color', label: 'Background' },
+      { key: 'card_color', label: 'Card Background' },
+      { key: 'button_primary_color', label: 'Primary Button' },
+      { key: 'button_secondary_color', label: 'Secondary Button' },
+      { key: 'text_primary', label: 'Primary Text' },
+      { key: 'text_secondary', label: 'Secondary Text' },
+      { key: 'border_color', label: 'Border' },
+      { key: 'accent_color', label: 'Accent / Red' },
+    ];
 
-  const colorInputs = tokens.map(t => `
+    const colorInputs = tokens.map(t => `
     <div class="color-item">
-      <input type="color" id="theme-${t.key}" class="color-swatch" value="${escHtml(theme[t.key]||'#000000')}"${dis}>
+      <input type="color" id="theme-${t.key}" class="color-swatch" value="${escHtml(theme[t.key] || '#000000')}"${dis}>
       <span class="color-label">${escHtml(t.label)}</span>
     </div>
   `).join('');
 
-  return `
+    return `
     <div class="color-grid">${colorInputs}</div>
     <div style="margin-top:20px;display:flex;gap:10px">
       ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.saveTheme()">Save Theme</button>` : ''}
       ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="BKDN.resetTheme()">Reset to Default</button>` : ''}
     </div>
   `;
-}
+  }
 
-/* ── Campaign Tab ───────────────────────────────────────────────── */
-function buildCampaignTab(p, canEdit) {
-  const dis = canEdit ? '' : ' disabled';
-  const pub = p.published_at ? p.published_at.replace(' ','T').slice(0,16) : '';
-  const exp = p.expires_at   ? p.expires_at.replace(' ','T').slice(0,16)   : '';
-  return `
+  /* ── Campaign Tab ───────────────────────────────────────────────── */
+  function buildCampaignTab(p, canEdit) {
+    const dis = canEdit ? '' : ' disabled';
+    const pub = p.published_at ? p.published_at.replace(' ', 'T').slice(0, 16) : '';
+    const exp = p.expires_at ? p.expires_at.replace(' ', 'T').slice(0, 16) : '';
+    return `
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Campaign Name <span style="color:#64748b;font-size:11px">(for analytics filtering)</span></label>
-        <input id="p-campaign" class="form-control" value="${escHtml(p.campaign_name||'')}"${dis}>
+        <input id="p-campaign" class="form-control" value="${escHtml(p.campaign_name || '')}"${dis}>
       </div>
       <div class="form-group">
         <label class="form-label">Publish Date</label>
@@ -1176,199 +1187,199 @@ function buildCampaignTab(p, canEdit) {
       </div>
     </div>
   `;
-}
-
-/* ── Save page ──────────────────────────────────────────────────── */
-async function savePage() {
-  const p = state.currentPage;
-  if (!p) return;
-
-  const theme = {};
-  document.querySelectorAll('[id^="theme-"]').forEach(el => {
-    const key = el.id.replace('theme-','');
-    theme[key] = el.value;
-  });
-
-  const body = {
-    title:         document.getElementById('p-title')?.value.trim(),
-    slug:          document.getElementById('p-slug')?.value.trim(),
-    headline:      document.getElementById('p-headline')?.value.trim(),
-    subheadline:   document.getElementById('p-subheadline')?.value.trim(),
-    seo_desc:      document.getElementById('p-seo-desc')?.value.trim(),
-    store_slug:    document.getElementById('p-store-slug')?.value.trim() || null,
-    campaign_name: document.getElementById('p-campaign')?.value.trim() || null,
-    published_at:  document.getElementById('p-published-at')?.value.replace('T',' ') || null,
-    expires_at:    document.getElementById('p-expires-at')?.value.replace('T',' ')   || null,
-    theme_json:    theme,
-    is_active:     p.is_active,
-  };
-
-  const saveBtn = document.getElementById('btn-save-page');
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
-
-  const res = await PUT('/admin/pages/' + p.id, body);
-  if (res?.ok) {
-    state.currentPage = { ...p, ...body };
-    const stateLabel = document.getElementById('pub-state-label');
-    if (stateLabel) {
-      stateLabel.className = 'pub-status pub-status--saved';
-      stateLabel.innerHTML = '&#9675; Saved Draft';
-    }
-    toast('Saved!');
-  } else {
-    toast(res?.data?.message || 'Save failed.', 'error');
   }
-  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Draft'; }
-}
 
-async function saveTheme() {
-  await savePage();
-}
+  /* ── Save page ──────────────────────────────────────────────────── */
+  async function savePage() {
+    const p = state.currentPage;
+    if (!p) return;
 
-async function resetTheme() {
-  if (!confirm('Reset theme to default colors?')) return;
-  const defaults = {
-    bg_color:'#0a0a0a', card_color:'#141414',
-    button_primary_color:'#B91C1C', button_secondary_color:'#141414',
-    text_primary:'#ffffff', text_secondary:'#888888',
-    border_color:'#262626', accent_color:'#B91C1C',
-  };
-  Object.entries(defaults).forEach(([k,v]) => {
-    const el = document.getElementById('theme-'+k);
-    if (el) el.value = v;
-  });
-  toast('Theme reset — click Save Theme to apply.');
-}
+    const theme = {};
+    document.querySelectorAll('[id^="theme-"]').forEach(el => {
+      const key = el.id.replace('theme-', '');
+      theme[key] = el.value;
+    });
 
-async function togglePageActive() {
-  const p = state.currentPage;
-  if (!p) return;
-  const res = await PUT('/admin/pages/' + p.id, { ...p, is_active: p.is_active ? 0 : 1 });
-  if (res?.ok) {
-    state.currentPage.is_active = p.is_active ? 0 : 1;
-    const isNowActive = state.currentPage.is_active;
-    const stateLabel = document.getElementById('pub-state-label');
-    if (stateLabel) {
-      stateLabel.className = 'pub-status pub-status--' + (isNowActive ? 'published' : 'saved');
-      stateLabel.innerHTML = isNowActive ? '&#9679; Published' : '&#9675; Draft';
-    }
-    const publishBtn = document.getElementById('btn-publish-page');
-    if (publishBtn) publishBtn.textContent = isNowActive ? 'Unpublish' : 'Publish';
-    toast(isNowActive ? 'Page published!' : 'Page unpublished.');
-  } else {
-    toast('Failed to update page status.', 'error');
-  }
-}
+    const body = {
+      title: document.getElementById('p-title')?.value.trim(),
+      slug: document.getElementById('p-slug')?.value.trim(),
+      headline: document.getElementById('p-headline')?.value.trim(),
+      subheadline: document.getElementById('p-subheadline')?.value.trim(),
+      seo_desc: document.getElementById('p-seo-desc')?.value.trim(),
+      store_slug: document.getElementById('p-store-slug')?.value.trim() || null,
+      campaign_name: document.getElementById('p-campaign')?.value.trim() || null,
+      published_at: document.getElementById('p-published-at')?.value.replace('T', ' ') || null,
+      expires_at: document.getElementById('p-expires-at')?.value.replace('T', ' ') || null,
+      theme_json: theme,
+      is_active: p.is_active,
+    };
 
-async function verifyPublicSync(slug) {
-  const resultArea = document.getElementById('sync-result-area');
-  if (!resultArea) return;
-  resultArea.innerHTML = '<div style="color:#64748b;font-size:13px;padding:8px 0">Checking public page…</div>';
+    const saveBtn = document.getElementById('btn-save-page');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
 
-  const p = state.currentPage;
-  const adminButtons = state.currentButtons.filter(b => b.is_active && b.enabled);
-
-  try {
-    // Fetch the live public page HTML and count visible buttons
-    const res = await fetch(`${CFG.siteUrl}/links/${slug}?_nocache=${Date.now()}`);
-    const html = await res.text();
-
-    // Count .bkdn-btn occurrences as proxy for visible buttons
-    const publicCount = (html.match(/bkdn-btn/g) || []).length;
-    const adminCount  = adminButtons.length;
-
-    if (!p?.is_active) {
-      resultArea.innerHTML = `<div class="sync-result sync-warn">&#9651; Page is not published — public visitors see a 404. Publish it to make it live.</div>`;
-      return;
-    }
-
-    if (publicCount === 0 && adminCount === 0) {
-      resultArea.innerHTML = `<div class="sync-result sync-ok">&#10003; Public page is live. No visible buttons (may be correct).</div>`;
-      return;
-    }
-
-    if (Math.abs(publicCount - adminCount) <= 1) {
-      resultArea.innerHTML = `<div class="sync-result sync-ok">&#10003; Public page is in sync — ${publicCount} button${publicCount!==1?'s':''} visible.</div>`;
+    const res = await PUT('/admin/pages/' + p.id, body);
+    if (res?.ok) {
+      state.currentPage = { ...p, ...body };
+      const stateLabel = document.getElementById('pub-state-label');
+      if (stateLabel) {
+        stateLabel.className = 'pub-status pub-status--saved';
+        stateLabel.innerHTML = '&#9675; Saved Draft';
+      }
+      toast('Saved!');
     } else {
-      resultArea.innerHTML = `<div class="sync-result sync-warn">&#9651; Possible mismatch — admin shows ${adminCount} active buttons, public page shows ~${publicCount}. This may be normal if some buttons are conditionally hidden. <a href="${CFG.siteUrl}/links/${slug}" target="_blank" style="color:#fde68a">Check manually →</a></div>`;
+      toast(res?.data?.message || 'Save failed.', 'error');
     }
-  } catch (e) {
-    resultArea.innerHTML = `<div class="sync-result sync-fail">&#9888; Could not reach public page. ${e.message}</div>`;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Draft'; }
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   BUTTONS TAB + DRAG-AND-DROP
-═══════════════════════════════════════════════════════════════════ */
-function buildButtonsTab(canEdit) {
-  return `
+  async function saveTheme() {
+    await savePage();
+  }
+
+  async function resetTheme() {
+    if (!confirm('Reset theme to default colors?')) return;
+    const defaults = {
+      bg_color: '#0a0a0a', card_color: '#141414',
+      button_primary_color: '#B91C1C', button_secondary_color: '#141414',
+      text_primary: '#ffffff', text_secondary: '#888888',
+      border_color: '#262626', accent_color: '#B91C1C',
+    };
+    Object.entries(defaults).forEach(([k, v]) => {
+      const el = document.getElementById('theme-' + k);
+      if (el) el.value = v;
+    });
+    toast('Theme reset — click Save Theme to apply.');
+  }
+
+  async function togglePageActive() {
+    const p = state.currentPage;
+    if (!p) return;
+    const res = await PUT('/admin/pages/' + p.id, { ...p, is_active: p.is_active ? 0 : 1 });
+    if (res?.ok) {
+      state.currentPage.is_active = p.is_active ? 0 : 1;
+      const isNowActive = state.currentPage.is_active;
+      const stateLabel = document.getElementById('pub-state-label');
+      if (stateLabel) {
+        stateLabel.className = 'pub-status pub-status--' + (isNowActive ? 'published' : 'saved');
+        stateLabel.innerHTML = isNowActive ? '&#9679; Published' : '&#9675; Draft';
+      }
+      const publishBtn = document.getElementById('btn-publish-page');
+      if (publishBtn) publishBtn.textContent = isNowActive ? 'Unpublish' : 'Publish';
+      toast(isNowActive ? 'Page published!' : 'Page unpublished.');
+    } else {
+      toast('Failed to update page status.', 'error');
+    }
+  }
+
+  async function verifyPublicSync(slug) {
+    const resultArea = document.getElementById('sync-result-area');
+    if (!resultArea) return;
+    resultArea.innerHTML = '<div style="color:#64748b;font-size:13px;padding:8px 0">Checking public page…</div>';
+
+    const p = state.currentPage;
+    const adminButtons = state.currentButtons.filter(b => b.is_active && b.enabled);
+
+    try {
+      // Fetch the live public page HTML and count visible buttons
+      const res = await fetch(`${CFG.siteUrl}/links/${slug}?_nocache=${Date.now()}`);
+      const html = await res.text();
+
+      // Count .bkdn-btn occurrences as proxy for visible buttons
+      const publicCount = (html.match(/bkdn-btn/g) || []).length;
+      const adminCount = adminButtons.length;
+
+      if (!p?.is_active) {
+        resultArea.innerHTML = `<div class="sync-result sync-warn">&#9651; Page is not published — public visitors see a 404. Publish it to make it live.</div>`;
+        return;
+      }
+
+      if (publicCount === 0 && adminCount === 0) {
+        resultArea.innerHTML = `<div class="sync-result sync-ok">&#10003; Public page is live. No visible buttons (may be correct).</div>`;
+        return;
+      }
+
+      if (Math.abs(publicCount - adminCount) <= 1) {
+        resultArea.innerHTML = `<div class="sync-result sync-ok">&#10003; Public page is in sync — ${publicCount} button${publicCount !== 1 ? 's' : ''} visible.</div>`;
+      } else {
+        resultArea.innerHTML = `<div class="sync-result sync-warn">&#9651; Possible mismatch — admin shows ${adminCount} active buttons, public page shows ~${publicCount}. This may be normal if some buttons are conditionally hidden. <a href="${CFG.siteUrl}/links/${slug}" target="_blank" style="color:#fde68a">Check manually →</a></div>`;
+      }
+    } catch (e) {
+      resultArea.innerHTML = `<div class="sync-result sync-fail">&#9888; Could not reach public page. ${e.message}</div>`;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     BUTTONS TAB + DRAG-AND-DROP
+  ═══════════════════════════════════════════════════════════════════ */
+  function buildButtonsTab(canEdit) {
+    return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <p style="color:#64748b;font-size:13px;margin:0">Drag rows to reorder. Click edit to change details.</p>
       ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.openAddButton()">${iconPlus()} Add Button</button>` : ''}
     </div>
     <div id="btn-list" class="btn-list"></div>
   `;
-}
-
-function renderButtonList() {
-  const el = document.getElementById('btn-list');
-  if (!el) return;
-
-  const canEdit = can(['super_admin','marketing_manager','store_manager']);
-
-  if (!state.currentButtons.length) {
-    el.innerHTML = '<div class="empty-state"><p>No buttons yet. Add your first link!</p></div>';
-    return;
   }
 
-  el.innerHTML = state.currentButtons.map((b, i) => {
-    const visible  = !!b.is_active;
-    const enabled  = !!b.enabled;
-    const featured = !!b.is_featured;
+  function renderButtonList() {
+    const el = document.getElementById('btn-list');
+    if (!el) return;
 
-    // Status badge
-    let statusClass = 'badge-green', statusLabel = 'Active';
-    if (!visible)       { statusClass = 'badge-gray';   statusLabel = 'Hidden'; }
-    else if (!enabled)  { statusClass = 'badge-yellow'; statusLabel = 'Disabled'; }
-    else if (featured)  { statusClass = 'badge-blue';   statusLabel = 'Featured'; }
+    const canEdit = can(['super_admin', 'marketing_manager', 'store_manager']);
 
-    // Scheduled?
-    const now = new Date();
-    const startAt = b.start_at ? new Date(b.start_at) : null;
-    const endAt   = b.end_at   ? new Date(b.end_at)   : null;
-    const isScheduled = (startAt && now < startAt) || (endAt && now > endAt);
-    if (isScheduled && visible) { statusClass = 'badge-yellow'; statusLabel = 'Scheduled'; }
+    if (!state.currentButtons.length) {
+      el.innerHTML = '<div class="empty-state"><p>No buttons yet. Add your first link!</p></div>';
+      return;
+    }
 
-    return `
-    <div class="btn-row ${!visible?'btn-row--hidden':''} ${visible&&!enabled?'btn-row--disabled':''}" draggable="${canEdit}" data-id="${b.id}" data-idx="${i}">
+    el.innerHTML = state.currentButtons.map((b, i) => {
+      const visible = !!b.is_active;
+      const enabled = !!b.enabled;
+      const featured = !!b.is_featured;
+
+      // Status badge
+      let statusClass = 'badge-green', statusLabel = 'Active';
+      if (!visible) { statusClass = 'badge-gray'; statusLabel = 'Hidden'; }
+      else if (!enabled) { statusClass = 'badge-yellow'; statusLabel = 'Disabled'; }
+      else if (featured) { statusClass = 'badge-blue'; statusLabel = 'Featured'; }
+
+      // Scheduled?
+      const now = new Date();
+      const startAt = b.start_at ? new Date(b.start_at) : null;
+      const endAt = b.end_at ? new Date(b.end_at) : null;
+      const isScheduled = (startAt && now < startAt) || (endAt && now > endAt);
+      if (isScheduled && visible) { statusClass = 'badge-yellow'; statusLabel = 'Scheduled'; }
+
+      return `
+    <div class="btn-row ${!visible ? 'btn-row--hidden' : ''} ${visible && !enabled ? 'btn-row--disabled' : ''}" draggable="${canEdit}" data-id="${b.id}" data-idx="${i}">
       <div class="btn-row-drag" title="Drag to reorder">${iconDrag()}</div>
       <div class="btn-row-body">
         <div class="btn-row-title">
           ${featured ? '<span style="color:#fbbf24;margin-right:4px" title="Featured">&#9733;</span>' : ''}
-          ${escHtml(b.title)}
+          ${escHtml(b.label)}
         </div>
         <div class="btn-row-meta">
           <span class="badge ${statusClass}" style="font-size:10px">${statusLabel}</span>
           ${b.icon_key ? `<span class="badge badge-gray" style="font-size:10px">${escHtml(b.icon_key)}</span>` : ''}
-          <span class="badge badge-gray" style="font-size:10px">${escHtml(b.style_variant||'secondary')}</span>
-          ${b.start_at||b.end_at ? `<span style="color:#64748b;font-size:10px" title="${escHtml(b.start_at||'')} - ${escHtml(b.end_at||'')}">&#128197; scheduled</span>` : ''}
+          <span class="badge badge-gray" style="font-size:10px">${escHtml(b.style_variant || 'secondary')}</span>
+          ${b.start_at || b.end_at ? `<span style="color:#64748b;font-size:10px" title="${escHtml(b.start_at || '')} - ${escHtml(b.end_at || '')}">&#128197; scheduled</span>` : ''}
         </div>
       </div>
-      <div class="btn-row-url" title="${escHtml(b.url||'')}">
-        ${b.url ? `<a href="${escHtml(b.url)}" target="_blank" style="color:#64748b;font-size:11px">${escHtml((b.url||'').substring(0,40)+(b.url&&b.url.length>40?'...':''))}</a>` : '<span style="color:#475569;font-size:11px">no url</span>'}
+      <div class="btn-row-url" title="${escHtml(b.url || '')}">
+        ${b.url ? `<a href="${escHtml(b.url)}" target="_blank" style="color:#64748b;font-size:11px">${escHtml((b.url || '').substring(0, 40) + (b.url && b.url.length > 40 ? '...' : ''))}</a>` : '<span style="color:#475569;font-size:11px">no url</span>'}
       </div>
       <div class="btn-row-toggles" style="display:flex;gap:12px;align-items:center;flex-shrink:0">
         <div style="text-align:center">
           <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Visible</div>
-          <label class="toggle"><input type="checkbox" ${visible?'checked':''} onchange="BKDN.toggleVisible(${b.id},this.checked)"><span class="toggle-slider"></span></label>
+          <label class="toggle"><input type="checkbox" ${visible ? 'checked' : ''} onchange="BKDN.toggleVisible(${b.id},this.checked)"><span class="toggle-slider"></span></label>
         </div>
         <div style="text-align:center">
           <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Enabled</div>
-          <label class="toggle"><input type="checkbox" ${enabled?'checked':''} onchange="BKDN.toggleButton(${b.id},this.checked)"><span class="toggle-slider"></span></label>
+          <label class="toggle"><input type="checkbox" ${enabled ? 'checked' : ''} onchange="BKDN.toggleButton(${b.id},this.checked)"><span class="toggle-slider"></span></label>
         </div>
         <div style="text-align:center">
           <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Featured</div>
-          <label class="toggle"><input type="checkbox" ${featured?'checked':''} onchange="BKDN.toggleFeatured(${b.id},this.checked)"><span class="toggle-slider"></span></label>
+          <label class="toggle"><input type="checkbox" ${featured ? 'checked' : ''} onchange="BKDN.toggleFeatured(${b.id},this.checked)"><span class="toggle-slider"></span></label>
         </div>
       </div>
       ${canEdit ? `
@@ -1379,137 +1390,137 @@ function renderButtonList() {
       </div>` : ''}
     </div>
     `;
-  }).join('');
+    }).join('');
 
-  if (canEdit) initDragDrop();
-}
+    if (canEdit) initDragDrop();
+  }
 
-/* ── HTML5 Drag-and-drop reorder ─────────────────────────────────── */
-function initDragDrop() {
-  const list = document.getElementById('btn-list');
-  if (!list) return;
+  /* ── HTML5 Drag-and-drop reorder ─────────────────────────────────── */
+  function initDragDrop() {
+    const list = document.getElementById('btn-list');
+    if (!list) return;
 
-  list.addEventListener('dragstart', e => {
-    const row = e.target.closest('.btn-row');
-    if (!row) return;
-    state.dragSrc = row;
-    row.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-  });
-
-  list.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const row = e.target.closest('.btn-row');
-    if (!row || row === state.dragSrc) return;
-    list.querySelectorAll('.btn-row').forEach(r => r.classList.remove('drag-over'));
-    row.classList.add('drag-over');
-  });
-
-  list.addEventListener('dragleave', e => {
-    const row = e.target.closest('.btn-row');
-    if (row) row.classList.remove('drag-over');
-  });
-
-  list.addEventListener('dragend', e => {
-    list.querySelectorAll('.btn-row').forEach(r => {
-      r.classList.remove('dragging','drag-over');
+    list.addEventListener('dragstart', e => {
+      const row = e.target.closest('.btn-row');
+      if (!row) return;
+      state.dragSrc = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
     });
-    state.dragSrc = null;
-  });
 
-  list.addEventListener('drop', async e => {
-    e.preventDefault();
-    const target = e.target.closest('.btn-row');
-    if (!target || !state.dragSrc || target === state.dragSrc) return;
+    list.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const row = e.target.closest('.btn-row');
+      if (!row || row === state.dragSrc) return;
+      list.querySelectorAll('.btn-row').forEach(r => r.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
 
-    // Reorder in DOM
-    const rows = [...list.querySelectorAll('.btn-row')];
-    const srcIdx = rows.indexOf(state.dragSrc);
-    const tgtIdx = rows.indexOf(target);
+    list.addEventListener('dragleave', e => {
+      const row = e.target.closest('.btn-row');
+      if (row) row.classList.remove('drag-over');
+    });
 
-    if (srcIdx < tgtIdx) {
-      target.after(state.dragSrc);
+    list.addEventListener('dragend', e => {
+      list.querySelectorAll('.btn-row').forEach(r => {
+        r.classList.remove('dragging', 'drag-over');
+      });
+      state.dragSrc = null;
+    });
+
+    list.addEventListener('drop', async e => {
+      e.preventDefault();
+      const target = e.target.closest('.btn-row');
+      if (!target || !state.dragSrc || target === state.dragSrc) return;
+
+      // Reorder in DOM
+      const rows = [...list.querySelectorAll('.btn-row')];
+      const srcIdx = rows.indexOf(state.dragSrc);
+      const tgtIdx = rows.indexOf(target);
+
+      if (srcIdx < tgtIdx) {
+        target.after(state.dragSrc);
+      } else {
+        target.before(state.dragSrc);
+      }
+
+      // Build new order
+      const newOrder = [...list.querySelectorAll('.btn-row')].map(r => parseInt(r.dataset.id));
+      state.currentButtons.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+
+      // Persist
+      const p = state.currentPage;
+      const res = await PATCH('/admin/pages/' + p.id + '/buttons/reorder', { order: newOrder });
+      if (!res?.ok) toast('Reorder failed — refresh to see server state.', 'error');
+    });
+  }
+
+  /* ── Toggle helpers ──────────────────────────────────────────────── */
+  async function toggleVisible(id, visible) {
+    const b = state.currentButtons.find(x => x.id === id);
+    if (!b) return;
+    const res = await PUT('/admin/buttons/' + id, { ...b, is_active: visible ? 1 : 0 });
+    if (res?.ok) {
+      b.is_active = visible ? 1 : 0;
+      renderButtonList();
     } else {
-      target.before(state.dragSrc);
+      toast('Failed to update visibility.', 'error');
+      renderButtonList();
     }
-
-    // Build new order
-    const newOrder = [...list.querySelectorAll('.btn-row')].map(r => parseInt(r.dataset.id));
-    state.currentButtons.sort((a,b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
-
-    // Persist
-    const p = state.currentPage;
-    const res = await PATCH('/admin/pages/' + p.id + '/buttons/reorder', { order: newOrder });
-    if (!res?.ok) toast('Reorder failed — refresh to see server state.', 'error');
-  });
-}
-
-/* ── Toggle helpers ──────────────────────────────────────────────── */
-async function toggleVisible(id, visible) {
-  const b = state.currentButtons.find(x => x.id === id);
-  if (!b) return;
-  const res = await PUT('/admin/buttons/' + id, { ...b, is_active: visible ? 1 : 0 });
-  if (res?.ok) {
-    b.is_active = visible ? 1 : 0;
-    renderButtonList();
-  } else {
-    toast('Failed to update visibility.', 'error');
-    renderButtonList();
   }
-}
 
-async function toggleButton(id, enabled) {
-  const b = state.currentButtons.find(x => x.id === id);
-  if (!b) return;
-  const res = await PUT('/admin/buttons/' + id, { ...b, enabled: enabled ? 1 : 0 });
-  if (res?.ok) {
-    b.enabled = enabled ? 1 : 0;
-    renderButtonList();
-  } else {
-    toast('Failed to toggle button.', 'error');
-    renderButtonList();
+  async function toggleButton(id, enabled) {
+    const b = state.currentButtons.find(x => x.id === id);
+    if (!b) return;
+    const res = await PUT('/admin/buttons/' + id, { ...b, enabled: enabled ? 1 : 0 });
+    if (res?.ok) {
+      b.enabled = enabled ? 1 : 0;
+      renderButtonList();
+    } else {
+      toast('Failed to toggle button.', 'error');
+      renderButtonList();
+    }
   }
-}
 
-async function toggleFeatured(id, featured) {
-  const b = state.currentButtons.find(x => x.id === id);
-  if (!b) return;
-  const res = await PUT('/admin/buttons/' + id, { ...b, is_featured: featured ? 1 : 0 });
-  if (res?.ok) {
-    b.is_featured = featured ? 1 : 0;
-    renderButtonList();
-  } else {
-    toast('Failed to update featured status.', 'error');
-    renderButtonList();
+  async function toggleFeatured(id, featured) {
+    const b = state.currentButtons.find(x => x.id === id);
+    if (!b) return;
+    const res = await PUT('/admin/buttons/' + id, { ...b, is_featured: featured ? 1 : 0 });
+    if (res?.ok) {
+      b.is_featured = featured ? 1 : 0;
+      renderButtonList();
+    } else {
+      toast('Failed to update featured status.', 'error');
+      renderButtonList();
+    }
   }
-}
 
-/* ── Button editor modal ─────────────────────────────────────────── */
-const ICON_KEYS = (CFG.iconKeys || ['order','website','email','events','instagram','facebook','directions','phone','menu','gift','ticket','external']);
-const STYLE_VARIANTS = ['primary','secondary','order_sub','coming_soon'];
+  /* ── Button editor modal ─────────────────────────────────────────── */
+  const ICON_KEYS = (CFG.iconKeys || ['order', 'website', 'email', 'events', 'instagram', 'facebook', 'directions', 'phone', 'menu', 'gift', 'ticket', 'external']);
+  const STYLE_VARIANTS = ['primary', 'secondary', 'order_sub', 'coming_soon'];
 
-function buttonForm(b = {}) {
-  const iconOpts = ['', ...ICON_KEYS].map(k =>
-    `<option value="${k}" ${(b.icon_key||'')=== k?'selected':''}>${k||'(none)'}</option>`
-  ).join('');
-  const styleOpts = STYLE_VARIANTS.map(v =>
-    `<option value="${v}" ${(b.style_variant||'secondary')===v?'selected':''}>${v}</option>`
-  ).join('');
+  function buttonForm(b = {}) {
+    const iconOpts = ['', ...ICON_KEYS].map(k =>
+      `<option value="${k}" ${(b.icon_key || '') === k ? 'selected' : ''}>${k || '(none)'}</option>`
+    ).join('');
+    const styleOpts = STYLE_VARIANTS.map(v =>
+      `<option value="${v}" ${(b.style_variant || 'secondary') === v ? 'selected' : ''}>${v}</option>`
+    ).join('');
 
-  return `
+    return `
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input id="bf-title" class="form-control" value="${escHtml(b.title||'')}" required>
+        <label class="form-label">Label *</label>
+        <input id="bf-label" class="form-control" value="${escHtml(b.label || '')}" required>
       </div>
       <div class="form-group">
         <label class="form-label">Subtitle</label>
-        <input id="bf-subtitle" class="form-control" value="${escHtml(b.subtitle||'')}">
+        <input id="bf-subtitle" class="form-control" value="${escHtml(b.subtitle || '')}">
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label class="form-label">URL</label>
-        <input id="bf-url" class="form-control" value="${escHtml(b.url||'')}" placeholder="https://…">
+        <input id="bf-url" class="form-control" value="${escUrl(b.url || '')}" placeholder="https://…">
       </div>
       <div class="form-group">
         <label class="form-label">Icon</label>
@@ -1521,148 +1532,152 @@ function buttonForm(b = {}) {
       </div>
       <div class="form-group">
         <label class="form-label">Starts At</label>
-        <input id="bf-start" type="datetime-local" class="form-control" value="${escHtml((b.start_at||'').replace(' ','T').slice(0,16))}">
+        <input id="bf-start" type="datetime-local" class="form-control" value="${escHtml((b.start_at || '').replace(' ', 'T').slice(0, 16))}">
       </div>
       <div class="form-group">
         <label class="form-label">Ends At</label>
-        <input id="bf-end" type="datetime-local" class="form-control" value="${escHtml((b.end_at||'').replace(' ','T').slice(0,16))}">
+        <input id="bf-end" type="datetime-local" class="form-control" value="${escHtml((b.end_at || '').replace(' ', 'T').slice(0, 16))}">
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-visible" type="checkbox" ${b.is_active!==0?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle"><input id="bf-visible" type="checkbox" ${b.is_active !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
         <span class="form-label" style="margin:0">Visible (show on page)</span>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-enabled" type="checkbox" ${b.enabled!==0?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle"><input id="bf-enabled" type="checkbox" ${b.enabled !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
         <span class="form-label" style="margin:0">Enabled (clickable)</span>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-new-tab" type="checkbox" ${b.opens_in_new_tab!==0?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle"><input id="bf-new-tab" type="checkbox" ${b.opens_in_new_tab !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
         <span class="form-label" style="margin:0">Open in new tab</span>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-featured" type="checkbox" ${b.is_featured?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle"><input id="bf-featured" type="checkbox" ${b.is_featured ? 'checked' : ''}><span class="toggle-slider"></span></label>
         <span class="form-label" style="margin:0">Featured (highlight)</span>
       </div>
     </div>
   `;
-}
+  }
 
-function getButtonFormValues() {
-  return {
-    title:            document.getElementById('bf-title').value.trim(),
-    subtitle:         document.getElementById('bf-subtitle').value.trim() || null,
-    url:              document.getElementById('bf-url').value.trim(),
-    icon_key:         document.getElementById('bf-icon').value || null,
-    style_variant:    document.getElementById('bf-style').value,
-    start_at:         document.getElementById('bf-start').value.replace('T',' ') || null,
-    end_at:           document.getElementById('bf-end').value.replace('T',' ')   || null,
-    is_active:        document.getElementById('bf-visible').checked  ? 1 : 0,
-    enabled:          document.getElementById('bf-enabled').checked  ? 1 : 0,
-    opens_in_new_tab: document.getElementById('bf-new-tab').checked  ? 1 : 0,
-    is_featured:      document.getElementById('bf-featured').checked ? 1 : 0,
-  };
-}
+  function getButtonFormValues() {
+    return {
+      label: document.getElementById('bf-label').value.trim(),
+      subtitle: document.getElementById('bf-subtitle').value.trim() || null,
+      url: document.getElementById('bf-url').value.trim(),
+      icon_key: document.getElementById('bf-icon').value || null,
+      style_variant: document.getElementById('bf-style').value,
+      start_at: document.getElementById('bf-start').value.replace('T', ' ') || null,
+      end_at: document.getElementById('bf-end').value.replace('T', ' ') || null,
+      is_active: document.getElementById('bf-visible').checked ? 1 : 0,
+      enabled: document.getElementById('bf-enabled').checked ? 1 : 0,
+      opens_in_new_tab: document.getElementById('bf-new-tab').checked ? 1 : 0,
+      is_featured: document.getElementById('bf-featured').checked ? 1 : 0,
+    };
+  }
 
-function openAddButton() {
-  openModal('Add Button', buttonForm({ is_active: 1, enabled: 1, opens_in_new_tab: 1 }), `
+  function openAddButton() {
+    openModal('Add Button', buttonForm({ is_active: 1, enabled: 1, opens_in_new_tab: 1 }), `
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="BKDN.addButton()">Add Button</button>
   `);
-}
-
-async function addButton() {
-  const vals = getButtonFormValues();
-  if (!vals.title) { toast('Title is required.', 'error'); return; }
-
-  const p = state.currentPage;
-  const res = await POST('/admin/pages/' + p.id + '/buttons', {
-    ...vals,
-    sort_order: state.currentButtons.length,
-    enabled: 1, is_active: 1,
-  });
-  if (res?.ok) {
-    state.currentButtons.push({ id: res.data.id, ...vals, enabled:1, is_active:1 });
-    renderButtonList();
-    closeModal();
-    toast('Button added!');
-  } else {
-    toast(res?.data?.message || 'Failed to add button.', 'error');
   }
-}
 
-function openEditButton(id) {
-  const b = state.currentButtons.find(x => x.id === id);
-  if (!b) return;
-  openModal('Edit Button', buttonForm(b), `
+  async function addButton() {
+    const vals = getButtonFormValues();
+    console.log('BUTTON_PAYLOAD', vals);
+    if (!vals.label) { toast('Label is required.', 'error'); return; }
+
+    const p = state.currentPage;
+    const payload = {
+      ...vals,
+      sort_order: state.currentButtons.length,
+      enabled: 1, is_active: 1,
+    };
+    console.log('BUTTON_PAYLOAD', payload);
+    const res = await POST('/admin/pages/' + p.id + '/buttons', payload);
+    if (res?.ok) {
+      state.currentButtons.push({ id: res.data.id, ...vals, enabled: 1, is_active: 1 });
+      renderButtonList();
+      closeModal();
+      toast('Button added!');
+    } else {
+      toast(res?.data?.message || 'Failed to add button.', 'error');
+    }
+  }
+
+  function openEditButton(id) {
+    const b = state.currentButtons.find(x => x.id === id);
+    if (!b) return;
+    openModal('Edit Button', buttonForm(b), `
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="BKDN.updateButton(${id})">Save Button</button>
   `);
-}
-
-async function updateButton(id) {
-  const vals = getButtonFormValues();
-  if (!vals.title) { toast('Title is required.', 'error'); return; }
-
-  const res = await PUT('/admin/buttons/' + id, vals);
-  if (res?.ok) {
-    const idx = state.currentButtons.findIndex(x => x.id === id);
-    if (idx !== -1) state.currentButtons[idx] = { ...state.currentButtons[idx], ...vals };
-    renderButtonList();
-    closeModal();
-    toast('Button saved!');
-  } else {
-    toast(res?.data?.message || 'Failed to update button.', 'error');
   }
-}
 
-async function duplicateButton(id) {
-  const res = await POST('/admin/buttons/' + id, {});
-  if (res?.ok) {
-    const original = state.currentButtons.find(x => x.id === id);
-    if (original) state.currentButtons.push({ ...original, id: res.data.id, title: original.title + ' (copy)' });
-    renderButtonList();
-    toast('Button duplicated!');
-  } else {
-    toast('Failed to duplicate button.', 'error');
+  async function updateButton(id) {
+    const vals = getButtonFormValues();
+    console.log('BUTTON_PAYLOAD', vals);
+    if (!vals.label) { toast('Label is required.', 'error'); return; }
+
+    const res = await PUT('/admin/buttons/' + id, vals);
+    if (res?.ok) {
+      const idx = state.currentButtons.findIndex(x => x.id === id);
+      if (idx !== -1) state.currentButtons[idx] = { ...state.currentButtons[idx], ...vals };
+      renderButtonList();
+      closeModal();
+      toast('Button saved!');
+    } else {
+      toast(res?.data?.message || 'Failed to update button.', 'error');
+    }
   }
-}
 
-async function deleteButton(id) {
-  if (!confirm('Delete this button?')) return;
-  const res = await DELETE('/admin/buttons/' + id);
-  if (res?.ok) {
-    state.currentButtons = state.currentButtons.filter(b => b.id !== id);
-    renderButtonList();
-    toast('Button deleted.');
-  } else {
-    toast('Failed to delete button.', 'error');
+  async function duplicateButton(id) {
+    const res = await POST('/admin/buttons/' + id, {});
+    if (res?.ok) {
+      const original = state.currentButtons.find(x => x.id === id);
+      if (original) state.currentButtons.push({ ...original, id: res.data.id, label: original.label + ' (copy)', url: original.url });
+      renderButtonList();
+      toast('Button duplicated!');
+    } else {
+      toast('Failed to duplicate button.', 'error');
+    }
   }
-}
 
-/* ── Page Analytics tab ──────────────────────────────────────────── */
-async function loadPageAnalytics() {
-  const el = document.getElementById('page-analytics-content');
-  if (!el || el.dataset.loaded) return;
-  el.dataset.loaded = '1';
+  async function deleteButton(id) {
+    if (!confirm('Delete this button?')) return;
+    const res = await DELETE('/admin/buttons/' + id);
+    if (res?.ok) {
+      state.currentButtons = state.currentButtons.filter(b => b.id !== id);
+      renderButtonList();
+      toast('Button deleted.');
+    } else {
+      toast('Failed to delete button.', 'error');
+    }
+  }
 
-  const p = state.currentPage;
-  const res = await GET('/admin/pages/' + p.id + '/analytics?period=7d');
-  if (!res?.ok) { el.innerHTML = '<p style="color:#64748b;padding:20px">No analytics data.</p>'; return; }
-  const d = res.data.analytics || {};
-  el.innerHTML = renderPageAnalyticsCards(d);
-}
+  /* ── Page Analytics tab ──────────────────────────────────────────── */
+  async function loadPageAnalytics() {
+    const el = document.getElementById('page-analytics-content');
+    if (!el || el.dataset.loaded) return;
+    el.dataset.loaded = '1';
 
-/* ── Page Redirects tab ──────────────────────────────────────────── */
-async function loadPageRedirects() {
-  const el = document.getElementById('page-redirects-content');
-  if (!el || el.dataset.loaded) return;
-  el.dataset.loaded = '1';
+    const p = state.currentPage;
+    const res = await GET('/admin/pages/' + p.id + '/analytics?period=7d');
+    if (!res?.ok) { el.innerHTML = '<p style="color:#64748b;padding:20px">No analytics data.</p>'; return; }
+    const d = res.data.analytics || {};
+    el.innerHTML = renderPageAnalyticsCards(d);
+  }
 
-  const p = state.currentPage;
-  const res = await GET('/admin/pages/' + p.id + '/redirects');
-  const rules = res?.data?.rules || [];
+  /* ── Page Redirects tab ──────────────────────────────────────────── */
+  async function loadPageRedirects() {
+    const el = document.getElementById('page-redirects-content');
+    if (!el || el.dataset.loaded) return;
+    el.dataset.loaded = '1';
 
-  el.innerHTML = `
+    const p = state.currentPage;
+    const res = await GET('/admin/pages/' + p.id + '/redirects');
+    const rules = res?.data?.rules || [];
+
+    el.innerHTML = `
     <div style="display:flex;justify-content:space-between;margin-bottom:16px">
       <p style="color:#64748b;margin:0;font-size:13px">Active redirect overrides the link page temporarily.</p>
       <button class="btn btn-primary btn-sm" onclick="BKDN.openAddRedirect(${p.id})">${iconPlus()} Add Redirect</button>
@@ -1678,7 +1693,7 @@ async function loadPageRedirects() {
               <td><span class="badge badge-gray">${r.redirect_type}</span></td>
               <td>${fmtDate(r.start_at)}</td>
               <td>${fmtDate(r.end_at)}</td>
-              <td><span class="badge badge-${r.is_active?'green':'gray'}">${r.is_active?'Yes':'No'}</span></td>
+              <td><span class="badge badge-${r.is_active ? 'green' : 'gray'}">${r.is_active ? 'Yes' : 'No'}</span></td>
               <td><button class="btn btn-sm btn-danger" onclick="BKDN.deleteRedirect(${r.id},${p.id})">${iconTrash()}</button></td>
             </tr>
           `).join('')}
@@ -1686,10 +1701,10 @@ async function loadPageRedirects() {
       </table>
     </div>` : '<p style="color:#64748b;text-align:center;padding:30px">No redirect rules.</p>'}
   `;
-}
+  }
 
-function openAddRedirect(pageId) {
-  openModal('Add Redirect Rule', `
+  function openAddRedirect(pageId) {
+    openModal('Add Redirect Rule', `
     <div class="form-group">
       <label class="form-label">Target URL *</label>
       <input id="rr-url" class="form-control" placeholder="https://…">
@@ -1719,46 +1734,46 @@ function openAddRedirect(pageId) {
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="BKDN.addRedirect(${pageId})">Save Redirect</button>
   `);
-}
-
-async function addRedirect(pageId) {
-  const url = document.getElementById('rr-url').value.trim();
-  if (!url) { toast('Target URL is required.', 'error'); return; }
-  const res = await POST('/admin/pages/' + pageId + '/redirects', {
-    target_url:    url,
-    redirect_type: document.getElementById('rr-type').value,
-    start_at:      document.getElementById('rr-start').value.replace('T',' ') || null,
-    end_at:        document.getElementById('rr-end').value.replace('T',' ')   || null,
-    notes:         document.getElementById('rr-notes').value.trim() || null,
-    is_active:     1,
-  });
-  if (res?.ok) {
-    toast('Redirect saved!');
-    closeModal();
-    const el = document.getElementById('page-redirects-content');
-    if (el) { delete el.dataset.loaded; loadPageRedirects(); }
-  } else {
-    toast('Failed to save redirect.', 'error');
   }
-}
 
-async function deleteRedirect(id, pageId) {
-  if (!confirm('Delete this redirect rule?')) return;
-  const res = await DELETE('/admin/redirects/' + id);
-  if (res?.ok) {
-    toast('Redirect deleted.');
-    const el = document.getElementById('page-redirects-content');
-    if (el) { delete el.dataset.loaded; loadPageRedirects(); }
-  } else {
-    toast('Failed to delete redirect.', 'error');
+  async function addRedirect(pageId) {
+    const url = document.getElementById('rr-url').value.trim();
+    if (!url) { toast('Target URL is required.', 'error'); return; }
+    const res = await POST('/admin/pages/' + pageId + '/redirects', {
+      target_url: url,
+      redirect_type: document.getElementById('rr-type').value,
+      start_at: document.getElementById('rr-start').value.replace('T', ' ') || null,
+      end_at: document.getElementById('rr-end').value.replace('T', ' ') || null,
+      notes: document.getElementById('rr-notes').value.trim() || null,
+      is_active: 1,
+    });
+    if (res?.ok) {
+      toast('Redirect saved!');
+      closeModal();
+      const el = document.getElementById('page-redirects-content');
+      if (el) { delete el.dataset.loaded; loadPageRedirects(); }
+    } else {
+      toast('Failed to save redirect.', 'error');
+    }
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: ANALYTICS
-═══════════════════════════════════════════════════════════════════ */
-async function viewAnalytics() {
-  setContent(`
+  async function deleteRedirect(id, pageId) {
+    if (!confirm('Delete this redirect rule?')) return;
+    const res = await DELETE('/admin/redirects/' + id);
+    if (res?.ok) {
+      toast('Redirect deleted.');
+      const el = document.getElementById('page-redirects-content');
+      if (el) { delete el.dataset.loaded; loadPageRedirects(); }
+    } else {
+      toast('Failed to delete redirect.', 'error');
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: ANALYTICS
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewAnalytics() {
+    setContent(`
     ${pageTitle('Analytics', 'Traffic overview for all pages')}
     <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
       <button class="period-btn active" data-period="7d" onclick="BKDN.selectPeriod(this,'7d')">7 days</button>
@@ -1767,40 +1782,40 @@ async function viewAnalytics() {
     </div>
     <div id="analytics-body">${loading()}</div>
   `);
-  await loadAnalytics('7d');
-}
-
-function selectPeriod(btn, period) {
-  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  loadAnalytics(period);
-}
-
-async function loadAnalytics(period) {
-  period = period || '7d';
-  const el = document.getElementById('analytics-body');
-  if (!el) return;
-  el.innerHTML = loading();
-  const res = await GET('/admin/analytics?period=' + period);
-  if (!res?.ok) {
-    el.innerHTML = '<p style="color:#64748b;padding:20px">Failed to load analytics. <button class="btn btn-ghost btn-sm" onclick="BKDN.loadAnalytics(\'' + period + '\')">Retry</button></p>';
-    return;
+    await loadAnalytics('7d');
   }
-  const d = res.data.analytics || {};
-  el.innerHTML = renderGlobalAnalytics(d, period);
-}
 
-function renderGlobalAnalytics(d, period) {
-  const statsHtml = [
-    { label:'Total Views',   value: fmtNum(d.total_views) },
-    { label:'Total Clicks',  value: fmtNum(d.total_clicks) },
-  ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
+  function selectPeriod(btn, period) {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadAnalytics(period);
+  }
 
-  const topPagesHtml = (d.top_pages||[]).map(p =>
-    `<tr><td><a href="#/pages/${p.page_id}" style="color:#94a3b8">${escHtml(p.title||p.slug)}</a></td><td style="text-align:right">${fmtNum(p.views)}</td></tr>`
-  ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No data yet</td></tr>';
+  async function loadAnalytics(period) {
+    period = period || '7d';
+    const el = document.getElementById('analytics-body');
+    if (!el) return;
+    el.innerHTML = loading();
+    const res = await GET('/admin/analytics?period=' + period);
+    if (!res?.ok) {
+      el.innerHTML = '<p style="color:#64748b;padding:20px">Failed to load analytics. <button class="btn btn-ghost btn-sm" onclick="BKDN.loadAnalytics(\'' + period + '\')">Retry</button></p>';
+      return;
+    }
+    const d = res.data.analytics || {};
+    el.innerHTML = renderGlobalAnalytics(d, period);
+  }
 
-  return `
+  function renderGlobalAnalytics(d, period) {
+    const statsHtml = [
+      { label: 'Total Views', value: fmtNum(d.total_views) },
+      { label: 'Total Clicks', value: fmtNum(d.total_clicks) },
+    ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
+
+    const topPagesHtml = (d.top_pages || []).map(p =>
+      `<tr><td><a href="#/pages/${p.page_id}" style="color:#94a3b8">${escHtml(p.title || p.slug)}</a></td><td style="text-align:right">${fmtNum(p.views)}</td></tr>`
+    ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No data yet</td></tr>';
+
+    return `
     <div class="stats-grid">${statsHtml}</div>
     <div class="card" style="margin-top:24px">
       <div class="card-header"><h3 class="card-title">Top Pages</h3></div>
@@ -1812,29 +1827,29 @@ function renderGlobalAnalytics(d, period) {
       </div>
     </div>
   `;
-}
+  }
 
-function renderPageAnalyticsCards(d) {
-  const views  = fmtNum(d.views  || 0);
-  const clicks = fmtNum(d.clicks || 0);
-  const ctr = (d.views && d.clicks) ? ((d.clicks / d.views) * 100).toFixed(1) + '%' : '—';
+  function renderPageAnalyticsCards(d) {
+    const views = fmtNum(d.views || 0);
+    const clicks = fmtNum(d.clicks || 0);
+    const ctr = (d.views && d.clicks) ? ((d.clicks / d.views) * 100).toFixed(1) + '%' : '—';
 
-  const deviceMap = {};
-  (d.devices||[]).forEach(row => { deviceMap[row.device_type] = parseInt(row.cnt||0); });
+    const deviceMap = {};
+    (d.devices || []).forEach(row => { deviceMap[row.device_type] = parseInt(row.cnt || 0); });
 
-  const statsHtml = [
-    { label:'Views',   value: views },
-    { label:'Clicks',  value: clicks },
-    { label:'CTR',     value: ctr },
-    { label:'Mobile',  value: fmtNum(deviceMap.mobile  || 0) },
-    { label:'Desktop', value: fmtNum(deviceMap.desktop || 0) },
-  ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
+    const statsHtml = [
+      { label: 'Views', value: views },
+      { label: 'Clicks', value: clicks },
+      { label: 'CTR', value: ctr },
+      { label: 'Mobile', value: fmtNum(deviceMap.mobile || 0) },
+      { label: 'Desktop', value: fmtNum(deviceMap.desktop || 0) },
+    ].map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${escHtml(s.label)}</div></div>`).join('');
 
-  const topButtonsHtml = (d.top_buttons||[]).map(b =>
-    `<tr><td>${escHtml(b.title||'(untitled)')}</td><td style="text-align:right">${fmtNum(b.clicks)}</td></tr>`
-  ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No clicks recorded yet</td></tr>';
+    const topButtonsHtml = (d.top_buttons || []).map(b =>
+      `<tr><td>${escHtml(b.label || '(untitled)')}</td><td style="text-align:right">${fmtNum(b.clicks)}</td></tr>`
+    ).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:16px">No clicks recorded yet</td></tr>';
 
-  return `
+    return `
     <div class="stats-grid">${statsHtml}</div>
     <div class="card" style="margin-top:24px">
       <div class="card-header"><h3 class="card-title">Top Buttons</h3></div>
@@ -1846,28 +1861,28 @@ function renderPageAnalyticsCards(d) {
       </div>
     </div>
   `;
-}
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: SUBSCRIBERS
-═══════════════════════════════════════════════════════════════════ */
-async function viewSubscribers() {
-  setContent(loading());
-  const res = await GET('/admin/subscribers');
-  if (!res?.ok) { setContent(errBanner('Failed to load subscribers.', 'BKDN.viewSubscribers()')); return; }
-  const subs = res?.data?.rows || [];
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: SUBSCRIBERS
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewSubscribers() {
+    setContent(loading());
+    const res = await GET('/admin/subscribers');
+    if (!res?.ok) { setContent(errBanner('Failed to load subscribers.', 'BKDN.viewSubscribers()')); return; }
+    const subs = res?.data?.rows || [];
 
-  const rows = subs.map(s => `
+    const rows = subs.map(s => `
     <tr>
       <td>${escHtml(s.email)}</td>
-      <td>${escHtml(s.first_name||'—')}</td>
-      <td>${escHtml(s.store_slug||'—')}</td>
-      <td><span class="badge badge-${s.integration_status==='synced'?'green':'gray'}">${escHtml(s.integration_status)}</span></td>
+      <td>${escHtml(s.first_name || '—')}</td>
+      <td>${escHtml(s.store_slug || '—')}</td>
+      <td><span class="badge badge-${s.integration_status === 'synced' ? 'green' : 'gray'}">${escHtml(s.integration_status)}</span></td>
       <td>${fmtDate(s.created_at)}</td>
     </tr>
   `).join('') || '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:30px">No subscribers yet.</td></tr>';
 
-  setContent(`
+    setContent(`
     ${pageTitle('Subscribers', subs.length + ' total')}
     <div class="card">
       <div class="card-header">
@@ -1882,25 +1897,25 @@ async function viewSubscribers() {
       </div>
     </div>
   `);
-}
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: SHORTLINKS
-═══════════════════════════════════════════════════════════════════ */
-async function viewShortlinks() {
-  setContent(loading());
-  const res = await GET('/admin/shortlinks');
-  if (!res?.ok) { setContent(errBanner('Failed to load shortlinks.', 'BKDN.viewShortlinks()')); return; }
-  const links = res?.data?.shortlinks || [];
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: SHORTLINKS
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewShortlinks() {
+    setContent(loading());
+    const res = await GET('/admin/shortlinks');
+    if (!res?.ok) { setContent(errBanner('Failed to load shortlinks.', 'BKDN.viewShortlinks()')); return; }
+    const links = res?.data?.shortlinks || [];
 
-  const rows = links.map(l => `
+    const rows = links.map(l => `
     <tr>
       <td><code style="color:#94a3b8">/go/${escHtml(l.slug)}</code></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         <a href="${escHtml(l.target_url)}" target="_blank" style="color:#64748b;font-size:12px">${escHtml(l.target_url)}</a>
       </td>
       <td style="text-align:right">${fmtNum(l.click_count)}</td>
-      <td><span class="badge badge-${l.is_active?'green':'gray'}">${l.is_active?'Active':'Off'}</span></td>
+      <td><span class="badge badge-${l.is_active ? 'green' : 'gray'}">${l.is_active ? 'Active' : 'Off'}</span></td>
       <td>${fmtDate(l.created_at)}</td>
       <td>
         <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -1911,7 +1926,7 @@ async function viewShortlinks() {
     </tr>
   `).join('') || '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">No shortlinks yet.</td></tr>';
 
-  setContent(`
+    setContent(`
     ${pageTitle('Shortlinks', 'UTM-tagged short URLs for campaigns')}
     <div class="card">
       <div class="card-header">
@@ -1926,10 +1941,10 @@ async function viewShortlinks() {
       </div>
     </div>
   `);
-}
+  }
 
-function openAddShortlink() {
-  openModal('New Shortlink', `
+  function openAddShortlink() {
+    openModal('New Shortlink', `
     <div class="form-group">
       <label class="form-label">Slug <span style="color:#64748b;font-size:11px">(becomes /go/slug)</span></label>
       <input id="sl-slug" class="form-control" placeholder="summer24">
@@ -1960,41 +1975,41 @@ function openAddShortlink() {
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="BKDN.createShortlink()">Create</button>
   `);
-}
-
-async function createShortlink() {
-  const slug = document.getElementById('sl-slug').value.trim();
-  const url  = document.getElementById('sl-url').value.trim();
-  if (!slug || !url) { toast('Slug and URL are required.', 'error'); return; }
-
-  const res = await POST('/admin/shortlinks', {
-    slug,
-    target_url:   url,
-    utm_source:   document.getElementById('sl-utm-source').value.trim()   || null,
-    utm_medium:   document.getElementById('sl-utm-medium').value.trim()   || null,
-    utm_campaign: document.getElementById('sl-utm-campaign').value.trim() || null,
-    notes:        document.getElementById('sl-notes').value.trim()        || null,
-    is_active: 1,
-  });
-  if (res?.ok) {
-    toast('Shortlink created!');
-    closeModal();
-    viewShortlinks();
-  } else {
-    toast(res?.data?.message || 'Failed to create shortlink.', 'error');
   }
-}
 
-async function deleteShortlink(id) {
-  if (!confirm('Delete this shortlink?')) return;
-  const res = await DELETE('/admin/shortlinks/' + id);
-  if (res?.ok) { toast('Shortlink deleted.'); viewShortlinks(); }
-  else toast('Failed to delete.', 'error');
-}
+  async function createShortlink() {
+    const slug = document.getElementById('sl-slug').value.trim();
+    const url = document.getElementById('sl-url').value.trim();
+    if (!slug || !url) { toast('Slug and URL are required.', 'error'); return; }
 
-/* ── QR code modal ───────────────────────────────────────────────── */
-function showQR(url, label) {
-  openModal('QR Code — ' + label, `
+    const res = await POST('/admin/shortlinks', {
+      slug,
+      target_url: url,
+      utm_source: document.getElementById('sl-utm-source').value.trim() || null,
+      utm_medium: document.getElementById('sl-utm-medium').value.trim() || null,
+      utm_campaign: document.getElementById('sl-utm-campaign').value.trim() || null,
+      notes: document.getElementById('sl-notes').value.trim() || null,
+      is_active: 1,
+    });
+    if (res?.ok) {
+      toast('Shortlink created!');
+      closeModal();
+      viewShortlinks();
+    } else {
+      toast(res?.data?.message || 'Failed to create shortlink.', 'error');
+    }
+  }
+
+  async function deleteShortlink(id) {
+    if (!confirm('Delete this shortlink?')) return;
+    const res = await DELETE('/admin/shortlinks/' + id);
+    if (res?.ok) { toast('Shortlink deleted.'); viewShortlinks(); }
+    else toast('Failed to delete.', 'error');
+  }
+
+  /* ── QR code modal ───────────────────────────────────────────────── */
+  function showQR(url, label) {
+    openModal('QR Code — ' + label, `
     <div class="qr-box">
       <div id="qr-canvas"></div>
       <div class="qr-url">${escHtml(url)}</div>
@@ -2004,54 +2019,54 @@ function showQR(url, label) {
     </div>
   `);
 
-  // Generate via QRCode.js CDN (loaded lazily)
-  loadQRLib(() => {
-    new QRCode(document.getElementById('qr-canvas'), {
-      text: url,
-      width: 200,
-      height: 200,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
+    // Generate via QRCode.js CDN (loaded lazily)
+    loadQRLib(() => {
+      new QRCode(document.getElementById('qr-canvas'), {
+        text: url,
+        width: 200,
+        height: 200,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+      });
     });
-  });
-}
+  }
 
-function downloadQR(label) {
-  const canvas = document.querySelector('#qr-canvas canvas');
-  if (!canvas) { toast('QR not ready yet.', 'error'); return; }
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'qr-' + label + '.png';
-  a.click();
-}
+  function downloadQR(label) {
+    const canvas = document.querySelector('#qr-canvas canvas');
+    if (!canvas) { toast('QR not ready yet.', 'error'); return; }
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'qr-' + label + '.png';
+    a.click();
+  }
 
-function loadQRLib(cb) {
-  if (window.QRCode) { cb(); return; }
-  const s = document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-  s.onload = cb;
-  document.head.appendChild(s);
-}
+  function loadQRLib(cb) {
+    if (window.QRCode) { cb(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = cb;
+    document.head.appendChild(s);
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: SETTINGS
-═══════════════════════════════════════════════════════════════════ */
-async function viewSettings() {
-  setContent(loading());
-  const res = await GET('/admin/settings');
-  if (!res?.ok) { setContent(errBanner('Failed to load settings.', 'BKDN.viewSettings()')); return; }
-  const opts = res?.data?.settings || {};
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: SETTINGS
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewSettings() {
+    setContent(loading());
+    const res = await GET('/admin/settings');
+    if (!res?.ok) { setContent(errBanner('Failed to load settings.', 'BKDN.viewSettings()')); return; }
+    const opts = res?.data?.settings || {};
 
-  setContent(`
+    setContent(`
     ${pageTitle('Settings', 'Global plugin configuration')}
     <div class="card">
       <div class="card-header"><h3 class="card-title">Order URLs</h3></div>
       <div style="padding:20px">
         <div class="form-grid">
-          ${['rim','stone_oak','bandera'].map(k => `
+          ${['rim', 'stone_oak', 'bandera'].map(k => `
             <div class="form-group">
-              <label class="form-label">${k.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())} Order URL</label>
-              <input id="s-order-${k}" class="form-control" value="${escHtml(opts['order_'+k]||'')}">
+              <label class="form-label">${k.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())} Order URL</label>
+              <input id="s-order-${k}" class="form-control" value="${escHtml(opts['order_' + k] || '')}">
             </div>
           `).join('')}
         </div>
@@ -2067,23 +2082,23 @@ async function viewSettings() {
           <div class="social-card-icon">&#128247;</div>
           <div class="social-card-body">
             <div class="social-card-label">Instagram</div>
-            <div class="social-card-url">${escHtml(opts.instagram_url||'(not set)')}</div>
+            <div class="social-card-url">${escHtml(opts.instagram_url || '(not set)')}</div>
           </div>
         </div>
         <div class="form-group" style="margin-top:10px">
           <label class="form-label">Instagram URL</label>
-          <input id="s-ig" class="form-control" value="${escHtml(opts.instagram_url||'')}" placeholder="https://www.instagram.com/bakudanramen/">
+          <input id="s-ig" class="form-control" value="${escHtml(opts.instagram_url || '')}" placeholder="https://www.instagram.com/bakudanramen/">
         </div>
         <div class="social-card" style="margin-top:16px">
           <div class="social-card-icon">&#128172;</div>
           <div class="social-card-body">
             <div class="social-card-label">Facebook</div>
-            <div class="social-card-url">${escHtml(opts.facebook_url||'(not set)')}</div>
+            <div class="social-card-url">${escHtml(opts.facebook_url || '(not set)')}</div>
           </div>
         </div>
         <div class="form-group" style="margin-top:10px">
           <label class="form-label">Facebook URL</label>
-          <input id="s-fb" class="form-control" value="${escHtml(opts.facebook_url||'')}" placeholder="https://www.facebook.com/…">
+          <input id="s-fb" class="form-control" value="${escHtml(opts.facebook_url || '')}" placeholder="https://www.facebook.com/…">
         </div>
         <div style="margin-top:10px;padding:10px 14px;background:#0f172a;border-radius:6px;font-size:12px;color:#64748b">
           &#8618; Changes here update all store pages. After saving, use <strong>Verify Sync</strong> on any page editor to confirm the public page reflects the change.
@@ -2095,13 +2110,13 @@ async function viewSettings() {
       <div style="padding:20px">
         <div style="display:flex;flex-direction:column;gap:16px">
           ${[
-            { key:'email_club_enabled',  label:'Show Email Club section' },
-            { key:'events_enabled',      label:'Show Events section' },
-            { key:'signup_form_enabled', label:'Show Email Signup Form' },
-          ].map(o => `
+        { key: 'email_club_enabled', label: 'Show Email Club section' },
+        { key: 'events_enabled', label: 'Show Events section' },
+        { key: 'signup_form_enabled', label: 'Show Email Signup Form' },
+      ].map(o => `
             <div style="display:flex;align-items:center;gap:12px">
               <label class="toggle">
-                <input id="s-${o.key}" type="checkbox" ${opts[o.key]?'checked':''}>
+                <input id="s-${o.key}" type="checkbox" ${opts[o.key] ? 'checked' : ''}>
                 <span class="toggle-slider"></span>
               </label>
               <span class="form-label" style="margin:0">${escHtml(o.label)}</span>
@@ -2114,44 +2129,44 @@ async function viewSettings() {
       <button class="btn btn-primary" onclick="BKDN.saveSettings()">Save Settings</button>
     </div>
   `);
-}
+  }
 
-async function saveSettings() {
-  const settings = {
-    order_rim:           document.getElementById('s-order-rim')?.value.trim()       || '',
-    order_stone_oak:     document.getElementById('s-order-stone_oak')?.value.trim() || '',
-    order_bandera:       document.getElementById('s-order-bandera')?.value.trim()   || '',
-    instagram_url:       document.getElementById('s-ig')?.value.trim()              || '',
-    facebook_url:        document.getElementById('s-fb')?.value.trim()              || '',
-    email_club_enabled:  document.getElementById('s-email_club_enabled')?.checked   ? 1 : 0,
-    events_enabled:      document.getElementById('s-events_enabled')?.checked        ? 1 : 0,
-    signup_form_enabled: document.getElementById('s-signup_form_enabled')?.checked  ? 1 : 0,
-  };
-  const res = await PUT('/admin/settings', settings);
-  if (res?.ok) toast('Settings saved!');
-  else toast('Failed to save settings.', 'error');
-}
+  async function saveSettings() {
+    const settings = {
+      order_rim: document.getElementById('s-order-rim')?.value.trim() || '',
+      order_stone_oak: document.getElementById('s-order-stone_oak')?.value.trim() || '',
+      order_bandera: document.getElementById('s-order-bandera')?.value.trim() || '',
+      instagram_url: document.getElementById('s-ig')?.value.trim() || '',
+      facebook_url: document.getElementById('s-fb')?.value.trim() || '',
+      email_club_enabled: document.getElementById('s-email_club_enabled')?.checked ? 1 : 0,
+      events_enabled: document.getElementById('s-events_enabled')?.checked ? 1 : 0,
+      signup_form_enabled: document.getElementById('s-signup_form_enabled')?.checked ? 1 : 0,
+    };
+    const res = await PUT('/admin/settings', settings);
+    if (res?.ok) toast('Settings saved!');
+    else toast('Failed to save settings.', 'error');
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: PROFILE
-═══════════════════════════════════════════════════════════════════ */
-function viewProfile() {
-  const u = state.user || {};
-  setContent(`
-    ${pageTitle('My Profile', escHtml(u.email||''))}
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: PROFILE
+  ═══════════════════════════════════════════════════════════════════ */
+  function viewProfile() {
+    const u = state.user || {};
+    setContent(`
+    ${pageTitle('My Profile', escHtml(u.email || ''))}
     <div class="card" style="max-width:480px">
       <div style="padding:24px">
         <div class="form-group">
           <label class="form-label">Name</label>
-          <input class="form-control" value="${escHtml(u.name||'')}" disabled>
+          <input class="form-control" value="${escHtml(u.name || '')}" disabled>
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input class="form-control" value="${escHtml(u.email||'')}" disabled>
+          <input class="form-control" value="${escHtml(u.email || '')}" disabled>
         </div>
         <div class="form-group">
           <label class="form-label">Role</label>
-          <input class="form-control" value="${escHtml(roleLabel(u.role||''))}" disabled>
+          <input class="form-control" value="${escHtml(roleLabel(u.role || ''))}" disabled>
         </div>
         <hr style="border-color:#1e293b;margin:24px 0">
         <h4 style="color:#e2e8f0;margin-bottom:16px">Change Password</h4>
@@ -2171,34 +2186,34 @@ function viewProfile() {
       </div>
     </div>
   `);
-}
-
-async function changePassword() {
-  const cur = document.getElementById('pwd-current').value;
-  const nw  = document.getElementById('pwd-new').value;
-  const conf= document.getElementById('pwd-confirm').value;
-  if (!cur || !nw) { toast('Fill in all password fields.', 'error'); return; }
-  if (nw !== conf) { toast('New passwords do not match.', 'error'); return; }
-  if (nw.length < 8) { toast('Password must be at least 8 characters.', 'error'); return; }
-
-  const res = await POST('/auth/change-password', { current_password: cur, new_password: nw });
-  if (res?.ok) {
-    toast('Password updated! Please sign in again.');
-    setTimeout(logout, 1500);
-  } else {
-    toast(res?.data?.message || 'Failed to change password.', 'error');
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: USERS (super_admin only)
-═══════════════════════════════════════════════════════════════════ */
-async function viewUsers() {
-  if (!can(['super_admin'])) { navigate('/dashboard'); return; }
-  setContent(loading());
-  const res = await GET('/admin/users').catch(() => null);
-  if (!res?.ok) {
-    setContent(`
+  async function changePassword() {
+    const cur = document.getElementById('pwd-current').value;
+    const nw = document.getElementById('pwd-new').value;
+    const conf = document.getElementById('pwd-confirm').value;
+    if (!cur || !nw) { toast('Fill in all password fields.', 'error'); return; }
+    if (nw !== conf) { toast('New passwords do not match.', 'error'); return; }
+    if (nw.length < 8) { toast('Password must be at least 8 characters.', 'error'); return; }
+
+    const res = await POST('/auth/change-password', { current_password: cur, new_password: nw });
+    if (res?.ok) {
+      toast('Password updated! Please sign in again.');
+      setTimeout(logout, 1500);
+    } else {
+      toast(res?.data?.message || 'Failed to change password.', 'error');
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: USERS (super_admin only)
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewUsers() {
+    if (!can(['super_admin'])) { navigate('/dashboard'); return; }
+    setContent(loading());
+    const res = await GET('/admin/users').catch(() => null);
+    if (!res?.ok) {
+      setContent(`
       ${pageTitle('User Management', 'Admin access control')}
       <div class="card">
         <div class="empty-state">
@@ -2208,17 +2223,17 @@ async function viewUsers() {
         </div>
       </div>
     `);
-    return;
-  }
-  const users = res?.data?.users || [];
+      return;
+    }
+    const users = res?.data?.users || [];
 
-  const rows = users.map(u => `
+    const rows = users.map(u => `
     <tr>
       <td>${escHtml(u.name)}</td>
       <td>${escHtml(u.email)}</td>
       <td><span class="badge badge-blue">${escHtml(roleLabel(u.role))}</span></td>
-      <td>${escHtml(u.store_slug||'—')}</td>
-      <td><span class="badge badge-${u.is_active?'green':'gray'}">${u.is_active?'Active':'Inactive'}</span></td>
+      <td>${escHtml(u.store_slug || '—')}</td>
+      <td><span class="badge badge-${u.is_active ? 'green' : 'gray'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
       <td>${fmtDate(u.last_login)}</td>
       <td>
         <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -2229,7 +2244,7 @@ async function viewUsers() {
     </tr>
   `).join('') || '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:30px">No users.</td></tr>';
 
-  setContent(`
+    setContent(`
     ${pageTitle('User Management', 'Control who can access Links Hub')}
     <div class="card">
       <div class="card-header">
@@ -2244,24 +2259,24 @@ async function viewUsers() {
       </div>
     </div>
   `);
-}
+  }
 
-function userForm(u = {}) {
-  const roles = ['super_admin','marketing_manager','store_manager','viewer'];
-  const roleOpts = roles.map(r => `<option value="${r}" ${(u.role||'viewer')===r?'selected':''}>${escHtml(roleLabel(r))}</option>`).join('');
-  return `
+  function userForm(u = {}) {
+    const roles = ['super_admin', 'marketing_manager', 'store_manager', 'viewer'];
+    const roleOpts = roles.map(r => `<option value="${r}" ${(u.role || 'viewer') === r ? 'selected' : ''}>${escHtml(roleLabel(r))}</option>`).join('');
+    return `
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Name *</label>
-        <input id="uf-name" class="form-control" value="${escHtml(u.name||'')}">
+        <input id="uf-name" class="form-control" value="${escHtml(u.name || '')}">
       </div>
       <div class="form-group">
         <label class="form-label">Email *</label>
-        <input id="uf-email" type="email" class="form-control" value="${escHtml(u.email||'')}">
+        <input id="uf-email" type="email" class="form-control" value="${escHtml(u.email || '')}">
       </div>
       <div class="form-group">
-        <label class="form-label">Password ${u.id?'<span style="color:#64748b;font-size:11px">(leave blank to keep)</span>':' *'}</label>
-        <input id="uf-password" type="password" class="form-control" placeholder="${u.id?'(unchanged)':'••••••••'}">
+        <label class="form-label">Password ${u.id ? '<span style="color:#64748b;font-size:11px">(leave blank to keep)</span>' : ' *'}</label>
+        <input id="uf-password" type="password" class="form-control" placeholder="${u.id ? '(unchanged)' : '••••••••'}">
       </div>
       <div class="form-group">
         <label class="form-label">Role</label>
@@ -2269,133 +2284,133 @@ function userForm(u = {}) {
       </div>
       <div class="form-group">
         <label class="form-label">Store Slug <span style="color:#64748b;font-size:11px">(for store_manager)</span></label>
-        <input id="uf-store" class="form-control" value="${escHtml(u.store_slug||'')}" placeholder="rim / stone-oak / bandera">
+        <input id="uf-store" class="form-control" value="${escHtml(u.store_slug || '')}" placeholder="rim / stone-oak / bandera">
       </div>
       ${u.id ? `
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="uf-active" type="checkbox" ${u.is_active?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle"><input id="uf-active" type="checkbox" ${u.is_active ? 'checked' : ''}><span class="toggle-slider"></span></label>
         <span class="form-label" style="margin:0">Active</span>
       </div>` : ''}
     </div>
   `;
-}
+  }
 
-function openCreateUser() {
-  openModal('New User', userForm(), `
+  function openCreateUser() {
+    openModal('New User', userForm(), `
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="BKDN.createUser()">Create User</button>
   `);
-}
+  }
 
-async function createUser() {
-  const name  = document.getElementById('uf-name').value.trim();
-  const email = document.getElementById('uf-email').value.trim();
-  const pwd   = document.getElementById('uf-password').value;
-  if (!name || !email || !pwd) { toast('Name, email, and password are required.', 'error'); return; }
+  async function createUser() {
+    const name = document.getElementById('uf-name').value.trim();
+    const email = document.getElementById('uf-email').value.trim();
+    const pwd = document.getElementById('uf-password').value;
+    if (!name || !email || !pwd) { toast('Name, email, and password are required.', 'error'); return; }
 
-  const res = await POST('/admin/users', {
-    name, email, password: pwd,
-    role:       document.getElementById('uf-role').value,
-    store_slug: document.getElementById('uf-store').value.trim() || null,
-    is_active:  1,
-  });
-  if (res?.ok) { toast('User created!'); closeModal(); viewUsers(); }
-  else toast(res?.data?.message || 'Failed to create user.', 'error');
-}
+    const res = await POST('/admin/users', {
+      name, email, password: pwd,
+      role: document.getElementById('uf-role').value,
+      store_slug: document.getElementById('uf-store').value.trim() || null,
+      is_active: 1,
+    });
+    if (res?.ok) { toast('User created!'); closeModal(); viewUsers(); }
+    else toast(res?.data?.message || 'Failed to create user.', 'error');
+  }
 
-let editUserId = null;
-function openEditUser(id) {
-  editUserId = id;
-  // Fetch user data from existing table row
-  GET('/admin/users').then(res => {
-    const u = (res?.data?.users||[]).find(x => x.id === id);
-    if (!u) { toast('User not found.', 'error'); return; }
-    openModal('Edit User', userForm(u), `
+  let editUserId = null;
+  function openEditUser(id) {
+    editUserId = id;
+    // Fetch user data from existing table row
+    GET('/admin/users').then(res => {
+      const u = (res?.data?.users || []).find(x => x.id === id);
+      if (!u) { toast('User not found.', 'error'); return; }
+      openModal('Edit User', userForm(u), `
       <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="BKDN.updateUser(${id})">Save</button>
     `);
-  });
-}
-
-async function updateUser(id) {
-  const pwd = document.getElementById('uf-password').value;
-  const body = {
-    name:       document.getElementById('uf-name').value.trim(),
-    role:       document.getElementById('uf-role').value,
-    store_slug: document.getElementById('uf-store').value.trim() || null,
-    is_active:  document.getElementById('uf-active').checked ? 1 : 0,
-  };
-  if (pwd) body.password = pwd;
-
-  const res = await PUT('/admin/users/' + id, body);
-  if (res?.ok) { toast('User updated!'); closeModal(); viewUsers(); }
-  else toast(res?.data?.message || 'Failed to update user.', 'error');
-}
-
-async function deleteUser(id, name) {
-  if (id === state.user?.id) { toast('Cannot delete your own account.', 'error'); return; }
-  if (!confirm(`Delete user "${name}"?`)) return;
-  const res = await DELETE('/admin/users/' + id);
-  if (res?.ok) { toast('User deleted.'); viewUsers(); }
-  else toast('Failed to delete user.', 'error');
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: SCHEDULING
-═══════════════════════════════════════════════════════════════════ */
-async function viewScheduling() {
-  setContent(loading());
-  const pagesRes = await GET('/admin/pages');
-  if (!pagesRes?.ok) { setContent(errBanner('Failed to load pages.', 'BKDN.viewScheduling()')); return; }
-  const pages = pagesRes.data.pages || [];
-
-  // Collect all buttons with scheduling across all pages
-  const allButtonFetches = pages.map(p => GET('/admin/pages/' + p.id + '/buttons').then(r => ({ page: p, buttons: r?.data?.buttons || [] })));
-  const allPageData = await Promise.all(allButtonFetches);
-
-  const now = new Date();
-  const scheduledItems = [];
-
-  allPageData.forEach(({ page, buttons }) => {
-    buttons.forEach(b => {
-      const startAt = b.start_at ? new Date(b.start_at) : null;
-      const endAt   = b.end_at   ? new Date(b.end_at)   : null;
-      const hasSchedule = !!(startAt || endAt);
-      if (!hasSchedule && b.is_active) return; // skip always-on with no schedule
-
-      let schedState = 'live';
-      if (!b.is_active)                        schedState = 'hidden';
-      else if (endAt && now > endAt)            schedState = 'expired';
-      else if (startAt && now < startAt)        schedState = 'scheduled';
-
-      scheduledItems.push({ page, button: b, startAt, endAt, schedState });
     });
-  });
+  }
 
-  const byState = { scheduled: [], live: [], expired: [], hidden: [] };
-  scheduledItems.forEach(item => {
-    (byState[item.schedState] || byState.live).push(item);
-  });
+  async function updateUser(id) {
+    const pwd = document.getElementById('uf-password').value;
+    const body = {
+      name: document.getElementById('uf-name').value.trim(),
+      role: document.getElementById('uf-role').value,
+      store_slug: document.getElementById('uf-store').value.trim() || null,
+      is_active: document.getElementById('uf-active').checked ? 1 : 0,
+    };
+    if (pwd) body.password = pwd;
 
-  function renderGroup(title, items, badgeClass) {
-    if (!items.length) return '';
-    return `
+    const res = await PUT('/admin/users/' + id, body);
+    if (res?.ok) { toast('User updated!'); closeModal(); viewUsers(); }
+    else toast(res?.data?.message || 'Failed to update user.', 'error');
+  }
+
+  async function deleteUser(id, name) {
+    if (id === state.user?.id) { toast('Cannot delete your own account.', 'error'); return; }
+    if (!confirm(`Delete user "${name}"?`)) return;
+    const res = await DELETE('/admin/users/' + id);
+    if (res?.ok) { toast('User deleted.'); viewUsers(); }
+    else toast('Failed to delete user.', 'error');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW: SCHEDULING
+  ═══════════════════════════════════════════════════════════════════ */
+  async function viewScheduling() {
+    setContent(loading());
+    const pagesRes = await GET('/admin/pages');
+    if (!pagesRes?.ok) { setContent(errBanner('Failed to load pages.', 'BKDN.viewScheduling()')); return; }
+    const pages = pagesRes.data.pages || [];
+
+    // Collect all buttons with scheduling across all pages
+    const allButtonFetches = pages.map(p => GET('/admin/pages/' + p.id + '/buttons').then(r => ({ page: p, buttons: r?.data?.buttons || [] })));
+    const allPageData = await Promise.all(allButtonFetches);
+
+    const now = new Date();
+    const scheduledItems = [];
+
+    allPageData.forEach(({ page, buttons }) => {
+      buttons.forEach(b => {
+        const startAt = b.start_at ? new Date(b.start_at) : null;
+        const endAt = b.end_at ? new Date(b.end_at) : null;
+        const hasSchedule = !!(startAt || endAt);
+        if (!hasSchedule && b.is_active) return; // skip always-on with no schedule
+
+        let schedState = 'live';
+        if (!b.is_active) schedState = 'hidden';
+        else if (endAt && now > endAt) schedState = 'expired';
+        else if (startAt && now < startAt) schedState = 'scheduled';
+
+        scheduledItems.push({ page, button: b, startAt, endAt, schedState });
+      });
+    });
+
+    const byState = { scheduled: [], live: [], expired: [], hidden: [] };
+    scheduledItems.forEach(item => {
+      (byState[item.schedState] || byState.live).push(item);
+    });
+
+    function renderGroup(title, items, badgeClass) {
+      if (!items.length) return '';
+      return `
       <div style="margin-bottom:24px">
         <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;font-weight:600">${escHtml(title)} <span class="badge badge-gray" style="font-size:10px">${items.length}</span></div>
         <div class="sched-grid">
           ${items.map(item => {
-            const b = item.button;
-            return `
+        const b = item.button;
+        return `
             <div class="sched-row">
               <div class="sched-row-info">
-                <div class="sched-row-title">${escHtml(b.title)}</div>
+                <div class="sched-row-title">${escHtml(b.label)}</div>
                 <div class="sched-row-meta">
                   <a href="#/pages/${item.page.id}" style="color:#60a5fa">${escHtml(item.page.title)}</a>
                   ${b.icon_key ? `· <span style="color:#64748b">${escHtml(b.icon_key)}</span>` : ''}
                 </div>
                 <div class="sched-row-dates">
-                  ${item.startAt ? `<span class="sched-date-item">▶ Starts: ${item.startAt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
-                  ${item.endAt   ? `<span class="sched-date-item">■ Ends: ${item.endAt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
+                  ${item.startAt ? `<span class="sched-date-item">▶ Starts: ${item.startAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
+                  ${item.endAt ? `<span class="sched-date-item">■ Ends: ${item.endAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                 </div>
               </div>
               <div>
@@ -2403,15 +2418,15 @@ async function viewScheduling() {
               </div>
               <a href="#/pages/${item.page.id}" class="btn btn-ghost btn-sm">${iconEdit()} Edit</a>
             </div>`;
-          }).join('')}
+      }).join('')}
         </div>
       </div>`;
-  }
+    }
 
-  const totalScheduled = scheduledItems.length;
+    const totalScheduled = scheduledItems.length;
 
-  setContent(`
-    ${pageTitle('Scheduling', `${totalScheduled} scheduled or conditional button${totalScheduled!==1?'s':''}`)}
+    setContent(`
+    ${pageTitle('Scheduling', `${totalScheduled} scheduled or conditional button${totalScheduled !== 1 ? 's' : ''}`)}
     ${!totalScheduled ? `
       <div class="card" style="text-align:center;padding:40px">
         <div style="font-size:32px;margin-bottom:12px">&#128197;</div>
@@ -2425,54 +2440,54 @@ async function viewScheduling() {
       ${renderGroup('Hidden', byState.hidden, 'sched-badge-hidden')}
     `}
   `);
-}
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
-   PUBLIC API (attached to window for onclick handlers)
-═══════════════════════════════════════════════════════════════════ */
-window.BKDN = {
-  logout,
-  closeModal,
-  // Dashboard
-  viewDashboard,
-  // Views (needed for retry buttons)
-  viewPages, viewSubscribers, viewShortlinks, viewSettings,
-  // Pages
-  openCreatePage, createPage, duplicatePage, deletePage,
-  // Page editor
-  savePage, saveTheme, resetTheme, togglePageActive, switchTab,
-  // Buttons
-  openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton, toggleVisible, toggleFeatured,
-  // Redirects
-  openAddRedirect, addRedirect, deleteRedirect,
-  // Analytics
-  loadAnalytics, selectPeriod,
-  viewScheduling,
-  verifyPublicSync,
-  navigate_,
-  // Shortlinks
-  openAddShortlink, createShortlink, deleteShortlink, showQR, downloadQR,
-  // Settings
-  saveSettings,
-  // Profile
-  changePassword,
-  // Users
-  openCreateUser, createUser, openEditUser, updateUser, deleteUser,
-};
+  /* ═══════════════════════════════════════════════════════════════════
+     PUBLIC API (attached to window for onclick handlers)
+  ═══════════════════════════════════════════════════════════════════ */
+  window.BKDN = {
+    logout,
+    closeModal,
+    // Dashboard
+    viewDashboard,
+    // Views (needed for retry buttons)
+    viewPages, viewSubscribers, viewShortlinks, viewSettings,
+    // Pages
+    openCreatePage, createPage, duplicatePage, deletePage,
+    // Page editor
+    savePage, saveTheme, resetTheme, togglePageActive, switchTab,
+    // Buttons
+    openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton, toggleVisible, toggleFeatured,
+    // Redirects
+    openAddRedirect, addRedirect, deleteRedirect,
+    // Analytics
+    loadAnalytics, selectPeriod,
+    viewScheduling,
+    verifyPublicSync,
+    navigate_,
+    // Shortlinks
+    openAddShortlink, createShortlink, deleteShortlink, showQR, downloadQR,
+    // Settings
+    saveSettings,
+    // Profile
+    changePassword,
+    // Users
+    openCreateUser, createUser, openEditUser, updateUser, deleteUser,
+  };
 
-/* ═══════════════════════════════════════════════════════════════════
-   BOOT
-═══════════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  // Signal the boot watchdog that JS loaded and executed successfully
-  window.BKDN_BOOTED = true;
-  document.dispatchEvent(new Event('bkdn:booted'));
+  /* ═══════════════════════════════════════════════════════════════════
+     BOOT
+  ═══════════════════════════════════════════════════════════════════ */
+  document.addEventListener('DOMContentLoaded', () => {
+    // Signal the boot watchdog that JS loaded and executed successfully
+    window.BKDN_BOOTED = true;
+    document.dispatchEvent(new Event('bkdn:booted'));
 
-  // Remove the static loading screen
-  const splash = document.getElementById('spa-loading');
-  if (splash) splash.remove();
+    // Remove the static loading screen
+    const splash = document.getElementById('spa-loading');
+    if (splash) splash.remove();
 
-  router();
-});
+    router();
+  });
 
 })();
