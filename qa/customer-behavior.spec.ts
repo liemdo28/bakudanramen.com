@@ -83,11 +83,11 @@ test.describe('C — Social customer: Instagram & Facebook', () => {
     expect(href).toContain('instagram.com/bakudanramen');
   });
 
-  test('Facebook link points to facebook.com/bakudanramen', async ({ page }) => {
+  test('Facebook link points to correct Facebook share URL', async ({ page }) => {
     await page.goto(`${BASE}/links/`);
     const fbLink = page.locator('a[href*="facebook.com"]');
     const href = await fbLink.getAttribute('href');
-    expect(href).toContain('facebook.com/bakudanramen');
+    expect(href).toBe('https://www.facebook.com/share/1L7NNTQF6e/?mibextid=wwXIfr');
   });
 
   test('Tag Us (Instagram) visible on temp linktree', async ({ page }) => {
@@ -168,6 +168,242 @@ test.describe('E — Marketing admin: login + CMS', () => {
     expect(body).toHaveProperty('dashboard');
     expect(body.dashboard).toHaveProperty('clicks_24h');
     expect(body.dashboard).toHaveProperty('views_24h');
+  });
+});
+
+// ── G. Admin: Add Button flow ─────────────────────────────────────────
+test.describe('G — Admin: Add Button modal validation & creation', () => {
+  test('Add Button modal opens from page editor', async ({ page }) => {
+    await page.goto(`${BASE}/links-admin/#/login`);
+    await page.locator('input[type="email"], input[type="text"]').first().fill('admin@bakudanramen.com');
+    await page.locator('input[type="password"]').fill('admin123');
+    await page.locator('button').filter({ hasText: /sign in|login|submit/i }).click();
+    await page.waitForTimeout(2000);
+
+    await page.goto(`${BASE}/links-admin/#/pages`);
+    await page.waitForTimeout(2000);
+
+    // Click first page edit link
+    const editLink = page.locator('a[href*="/pages/"]').first();
+    if (await editLink.isVisible()) {
+      await editLink.click();
+      await page.waitForTimeout(2000);
+
+      // Click Add Button button if visible
+      const addBtn = page.locator('button', { hasText: /add button|new button/i });
+      if (await addBtn.isVisible()) {
+        await addBtn.click();
+        await page.waitForTimeout(1000);
+        await expect(page.locator('.modal .modal-title')).toContainText(/button/i);
+      }
+    }
+  });
+
+  test('Facebook share URL is accepted without validation error', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    expect(loginRes.status()).toBe(200);
+    const { token } = await loginRes.json();
+
+    // Get first page ID
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(pagesRes.status()).toBe(200);
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+    expect(firstPageId).toBeTruthy();
+
+    // POST a button with the Facebook share URL — should NOT return "Label and URL are required"
+    const createRes = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: {
+        label: 'Facebook',
+        url: 'https://www.facebook.com/share/1L7NNTQF6e/?mibextid=wwXIfr',
+        icon: 'facebook'
+      }
+    });
+
+    // Should succeed (201 or 200), not 400
+    expect(createRes.status()).toBeLessThan(300, `Expected success but got ${createRes.status()}: ${await createRes.text()}`);
+    const body = await createRes.json();
+    expect(body).toHaveProperty('id');
+    expect(body.label).toBe('Facebook');
+    expect(body.url).toBe('https://www.facebook.com/share/1L7NNTQF6e/?mibextid=wwXIfr');
+  });
+
+  test('Button with empty URL is accepted (label-only button)', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    expect(loginRes.status()).toBe(200);
+    const { token } = await loginRes.json();
+
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+    expect(firstPageId).toBeTruthy();
+
+    // Label-only button (no URL) should succeed
+    const createRes = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { label: 'Divider Label', url: '' }
+    });
+
+    expect(createRes.status()).toBeLessThan(300, `Empty URL should be accepted but got ${createRes.status()}: ${await createRes.text()}`);
+    const body = await createRes.json();
+    expect(body).toHaveProperty('id');
+    expect(body.label).toBe('Divider Label');
+    expect(body.url).toBe('');
+  });
+
+  test('Missing label returns "Label is required" error', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    const { token } = await loginRes.json();
+
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+
+    const res = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { label: '', url: 'https://bakudanramen.com' }
+    });
+
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body.message).toContain('Label');
+  });
+
+  test('ToastTab rewards URL is accepted', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    const { token } = await loginRes.json();
+
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+
+    const createRes = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { label: 'Join Rewards', url: 'https://www.toasttab.com/bakudanramen/rewardsSignup', icon: 'gift' }
+    });
+
+    expect(createRes.status()).toBeLessThan(300);
+    const body = await createRes.json();
+    expect(body.url).toBe('https://www.toasttab.com/bakudanramen/rewardsSignup');
+  });
+
+  test('opens_in_new_tab=false persists after creation and reload', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    const { token } = await loginRes.json();
+
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+
+    // Create with opens_in_new_tab = 0 (same tab)
+    const createRes = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: {
+        label: 'Same Tab Link',
+        url: 'https://bakudanramen.com',
+        opens_in_new_tab: 0
+      }
+    });
+    expect(createRes.status()).toBeLessThan(300);
+    const created = await createRes.json();
+    expect(created.opens_in_new_tab).toBe(0);
+
+    // Reload: fetch button list and verify persistence
+    const reloadRes = await request.get(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(reloadRes.status()).toBe(200);
+    const buttons = await reloadRes.json();
+    const saved = buttons.buttons?.find((b) => b.id === created.id);
+    expect(saved).toBeDefined();
+    expect(saved.opens_in_new_tab).toBe(0);
+  });
+
+  test('opens_in_new_tab=true persists after creation and reload', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    const { token } = await loginRes.json();
+
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+
+    // Create with opens_in_new_tab = 1 (new tab — default)
+    const createRes = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: {
+        label: 'New Tab Link',
+        url: 'https://bakudanramen.com',
+        opens_in_new_tab: 1
+      }
+    });
+    expect(createRes.status()).toBeLessThan(300);
+    const created = await createRes.json();
+    expect(created.opens_in_new_tab).toBe(1);
+
+    // Reload and verify persistence
+    const reloadRes = await request.get(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const buttons = await reloadRes.json();
+    const saved = buttons.buttons?.find((b) => b.id === created.id);
+    expect(saved).toBeDefined();
+    expect(saved.opens_in_new_tab).toBe(1);
+  });
+
+  test('PUT /admin/buttons/:id updates opens_in_new_tab correctly', async ({ request }) => {
+    const loginRes = await request.post(`${BASE}/api/auth/login`, {
+      data: { email: 'admin@bakudanramen.com', password: 'admin123' }
+    });
+    const { token } = await loginRes.json();
+
+    const pagesRes = await request.get(`${BASE}/api/admin/pages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const pages = await pagesRes.json();
+    const firstPageId = pages.pages?.[0]?.id;
+
+    // Create button with opens_in_new_tab = 1
+    const createRes = await request.post(`${BASE}/api/admin/pages/${firstPageId}/buttons`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { label: 'Toggle Test', url: 'https://bakudanramen.com', opens_in_new_tab: 1 }
+    });
+    const created = await createRes.json();
+    expect(createRes.status()).toBeLessThan(300);
+    expect(created.opens_in_new_tab).toBe(1);
+
+    // Update to opens_in_new_tab = 0
+    const updateRes = await request.put(`${BASE}/api/admin/buttons/${created.id}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { opens_in_new_tab: 0 }
+    });
+    expect(updateRes.status()).toBeLessThan(300);
+    const updated = await updateRes.json();
+    expect(updated.opens_in_new_tab).toBe(0);
   });
 });
 

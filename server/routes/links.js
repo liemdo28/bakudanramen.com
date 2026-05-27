@@ -137,7 +137,6 @@ router.post('/admin/pages/:id/buttons', verify, requireRole(...EDIT), (req, res)
   if (!page) return res.status(404).json({ ok: false, error: 'Page not found' });
 
   const { label, url, icon, sort_order, is_active, is_featured, enabled, opens_in_new_tab, start_at, end_at } = req.body || {};
-  console.log('REQ_BODY', JSON.stringify(req.body, null, 2));
 
   if (!label || !url) {
     return res.status(400).json({ ok: false, error: 'Label and URL required' });
