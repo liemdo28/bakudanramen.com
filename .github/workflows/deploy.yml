@@ -17,6 +17,8 @@ jobs:
         run: |
           mkdir -p /tmp/deploy
           rsync -a \
+            --include='links-admin/' \
+            --include='links-admin/**' \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
@@ -33,8 +35,7 @@ jobs:
             --exclude='*.sh' \
             --exclude='.htpasswd' \
             --exclude='.env*' \
-            --include='links-admin/' \
-            --include='links-admin/**' \
+            --exclude='*/' \
             ./ /tmp/deploy/
 
       - name: Deploy via SCP
