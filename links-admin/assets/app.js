@@ -1584,15 +1584,27 @@
   async function addButton() {
     const vals = getButtonFormValues();
     console.log('BUTTON_PAYLOAD', vals);
-    if (!vals.label) { toast('Label is required.', 'error'); return; }
+    if (!vals.label || !vals.url) {
+      toast('Label and URL are required.', 'error');
+      return;
+    }
 
     const p = state.currentPage;
     const payload = {
-      ...vals,
+      label: vals.label,
+      url: vals.url,
+      subtitle: vals.subtitle,
+      icon_key: vals.icon_key,
+      style_variant: vals.style_variant,
+      start_at: vals.start_at,
+      end_at: vals.end_at,
+      is_active: 1,
+      enabled: 1,
+      opens_in_new_tab: vals.opens_in_new_tab,
+      is_featured: vals.is_featured,
       sort_order: state.currentButtons.length,
-      enabled: 1, is_active: 1,
     };
-    console.log('BUTTON_PAYLOAD', payload);
+    console.log('BUTTON_SUBMIT_PAYLOAD', payload);
     const res = await POST('/admin/pages/' + p.id + '/buttons', payload);
     if (res?.ok) {
       state.currentButtons.push({ id: res.data.id, ...vals, enabled: 1, is_active: 1 });
@@ -1616,7 +1628,10 @@
   async function updateButton(id) {
     const vals = getButtonFormValues();
     console.log('BUTTON_PAYLOAD', vals);
-    if (!vals.label) { toast('Label is required.', 'error'); return; }
+    if (!vals.label || !vals.url) {
+      toast('Label and URL are required.', 'error');
+      return;
+    }
 
     const res = await PUT('/admin/buttons/' + id, vals);
     if (res?.ok) {
