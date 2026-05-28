@@ -21,6 +21,8 @@ jobs:
             --include='links-admin/**' \
             --include='links/' \
             --include='links/**' \
+            --include='api/' \
+            --include='api/**' \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \

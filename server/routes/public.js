@@ -18,6 +18,14 @@ router.get('/site-config', (req, res) => {
   }
 });
 
+// GET /api/public/pages/all — list all active pages (MUST be declared before /pages/:slug)
+router.get('/pages/all', (req, res) => {
+  const pages = db.prepare(
+    'SELECT id, title, slug, headline, store_slug FROM pages WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order ASC, id ASC'
+  ).all();
+  res.json({ ok: true, data: { pages } });
+});
+
 // GET /api/public/pages/:slug — public link hub page
 router.get('/pages/:slug', (req, res) => {
   const page = db.prepare(
@@ -94,14 +102,6 @@ router.get('/shortlinks/:code', (req, res) => {
   `).run(sl.id, req.get('Referer') || null, req.get('User-Agent') || null, req.ip || null);
 
   res.redirect(302, sl.destination);
-});
-
-// GET /api/public/pages/all — list all active pages (for store-tab switcher)
-router.get('/pages/all', (req, res) => {
-  const pages = db.prepare(
-    'SELECT id, title, slug, headline, store_slug FROM pages WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order ASC, id ASC'
-  ).all();
-  res.json({ ok: true, data: { pages } });
 });
 
 // GET /api/public/posts — published blog posts for the public site
