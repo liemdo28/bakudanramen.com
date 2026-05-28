@@ -6,52 +6,54 @@
 require('dotenv').config();
 
 const express = require('express');
-const path    = require('path');
-const fs      = require('fs');
-const cron    = require('node-cron');
-const db      = require('./db');
+const path = require('path');
+const fs = require('fs');
+const cron = require('node-cron');
+const db = require('./db');
+const dbOps = require('./db-operations');
+const scheduler = require('./scheduler');
 
-const app  = express();
+const app = express();
 const ROOT = path.join(__dirname, '..');
 const PORT = process.env.PORT || 3000;
-const pkg  = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
 /* ── Middleware ──────────────────────────────────── */
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploads
-app.use('/uploads', express.static(path.join(ROOT, 'uploads')));
+// Serve uploaded media (stored under images/uploads/, served as /images/uploads/*)
+// express.static(ROOT) below already covers this path — no separate mount needed.
 
 /* ── API Config endpoint ─────────────────────────── */
 app.get('/api/config', (req, res) => {
   const serverStat = fs.statSync(path.join(__dirname, 'server.js'));
   res.json({
     ok: true,
-    version:     pkg.version,
-    deployedAt:  serverStat.mtime.toISOString(),
-    siteUrl:     process.env.SITE_URL || 'https://bakudanramen.com',
-    iconKeys:    ['order','website','email','events','instagram','facebook',
-                  'directions','phone','menu','gift','ticket','external','blog','social'],
+    version: pkg.version,
+    deployedAt: serverStat.mtime.toISOString(),
+    siteUrl: process.env.SITE_URL || 'https://bakudanramen.com',
+    iconKeys: ['order', 'website', 'email', 'events', 'instagram', 'facebook',
+      'directions', 'phone', 'menu', 'gift', 'ticket', 'external', 'blog', 'social'],
     project: {
-      key:         'bakudan-links',
-      name:        'Bakudan Ramen — Links Ecosystem',
+      key: 'bakudan-links',
+      name: 'Bakudan Ramen — Links Ecosystem',
       description: 'Self-hosted Link Hub + Blog CMS for bakudanramen.com',
-      purpose:     'Replace Linktree subscription. Full control over links, analytics, scheduling, and content.',
-      owner_team:  'Marketing / Agency',
-      support:     'admin@bakudanramen.com',
-      status:      'active',
+      purpose: 'Replace Linktree subscription. Full control over links, analytics, scheduling, and content.',
+      owner_team: 'Marketing / Agency',
+      support: 'admin@bakudanramen.com',
+      status: 'active',
       environment: 'production',
       resources: [
-        { type:'website',       label:'Main Website',      url:'https://bakudanramen.com' },
-        { type:'public_links',  label:'Public Links Page', url:'https://bakudanramen.com/links' },
-        { type:'admin_console', label:'Links Admin',       url:'https://bakudanramen.com/links-admin' },
-        { type:'blog',          label:'Blog',              url:'https://bakudanramen.com/blog-cms' },
+        { type: 'website', label: 'Main Website', url: 'https://bakudanramen.com' },
+        { type: 'public_links', label: 'Public Links Page', url: 'https://bakudanramen.com/links' },
+        { type: 'admin_console', label: 'Links Admin', url: 'https://bakudanramen.com/links-admin' },
+        { type: 'blog', label: 'Blog', url: 'https://bakudanramen.com/blog-cms' },
       ],
       stores: [
-        { slug:'rim',       name:'The Rim',    address:'17619 La Cantera Pkwy #208' },
-        { slug:'stone-oak', name:'Stone Oak',  address:'22506 US Hwy 281 N #106' },
-        { slug:'bandera',   name:'Bandera',    address:'11309 Bandera Rd #111' },
+        { slug: 'rim', name: 'The Rim', address: '17619 La Cantera Pkwy #208' },
+        { slug: 'stone-oak', name: 'Stone Oak', address: '22506 US Hwy 281 N #106' },
+        { slug: 'bandera', name: 'Bandera', address: '11309 Bandera Rd #111' },
       ],
       notes: [
         'Changes to /links reflect immediately after Publish.',
@@ -65,18 +67,19 @@ app.get('/api/config', (req, res) => {
 });
 
 /* ── API Routes ──────────────────────────────────── */
-app.use('/api/auth',   require('./routes/auth'));
-app.use('/api/blog',   require('./routes/blog'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/blog', require('./routes/blog'));
 app.use('/api/public', require('./routes/public'));
+app.use('/api/ops', require('./routes/operations'));
 // links router mounted at /api so frontend calls /api/admin/* resolve correctly
-app.use('/api',        require('./routes/links'));
+app.use('/api', require('./routes/links'));
 
 /* ── Admin SPA ───────────────────────────────────── */
 // Serve the SPA shell for all /links-admin/* paths
 app.use('/links-admin', (req, res, next) => {
   // Static assets for the admin SPA (app.js, app.css)
   const adminDir = path.join(ROOT, 'links-admin');
-  const urlPath  = req.path === '/' ? '/index.html' : req.path;
+  const urlPath = req.path === '/' ? '/index.html' : req.path;
   const filePath = path.join(adminDir, urlPath);
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     return res.sendFile(filePath);
@@ -120,18 +123,9 @@ app.use((err, req, res, _next) => {
   res.status(500).send('Server error');
 });
 
-/* ── Scheduled publishing cron ───────────────────── */
-// Every minute: auto-publish blog posts whose scheduled_at has passed
+/* ── Scheduling Engine (every minute) ────────────── */
 cron.schedule('* * * * *', () => {
-  const now = new Date().toISOString();
-  const result = db.prepare(`
-    UPDATE blog_posts
-    SET status = 'published', published_at = datetime('now'), updated_at = datetime('now')
-    WHERE status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= ? AND archived_at IS NULL
-  `).run(now);
-  if (result.changes > 0) {
-    console.log(`[cron] Auto-published ${result.changes} scheduled blog post(s)`);
-  }
+  scheduler.tick();
 });
 
 /* ── Start ───────────────────────────────────────── */

@@ -46,6 +46,8 @@ function checkRequiredFiles() {
         'assets/app.js',
         'assets/app.css',
         'assets/blog-extension.js',
+        'assets/operations.js',
+        'assets/operations.css',
         'deploy-manifest.json',
     ];
 

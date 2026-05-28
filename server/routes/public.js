@@ -1,15 +1,15 @@
 'use strict';
 const router = require('express').Router();
-const db     = require('../db');
-const path   = require('path');
-const fs     = require('fs');
+const db = require('../db');
+const path = require('path');
+const fs = require('fs');
 
 const CONFIG_PATH = path.join(__dirname, '..', '..', 'data', 'site-config.json');
 
 // GET /api/public/site-config — serve site-config.json with ETag caching
 router.get('/site-config', (req, res) => {
   try {
-    const raw    = fs.readFileSync(CONFIG_PATH, 'utf8');
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
     const config = JSON.parse(raw);
     res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     res.json({ ok: true, data: config });
@@ -21,14 +21,14 @@ router.get('/site-config', (req, res) => {
 // GET /api/public/pages/:slug — public link hub page
 router.get('/pages/:slug', (req, res) => {
   const page = db.prepare(
-    'SELECT * FROM pages WHERE slug = ? AND is_active = 1'
+    'SELECT * FROM pages WHERE slug = ? AND is_active = 1 AND deleted_at IS NULL'
   ).get(req.params.slug);
   if (!page) return res.status(404).json({ ok: false, error: 'Page not found' });
 
   const now = new Date().toISOString();
   const buttons = db.prepare(`
     SELECT * FROM buttons
-    WHERE page_id = ? AND is_active = 1 AND enabled = 1
+    WHERE page_id = ? AND is_active = 1 AND enabled = 1 AND deleted_at IS NULL
       AND (start_at IS NULL OR start_at <= ?)
       AND (end_at   IS NULL OR end_at   >= ?)
     ORDER BY sort_order ASC, id ASC
@@ -50,11 +50,11 @@ router.post('/track', (req, res) => {
     INSERT INTO analytics (page_id, button_id, shortlink_id, event_type, referrer, user_agent, ip)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
-    page_id      || null,
-    button_id    || null,
+    page_id || null,
+    button_id || null,
     shortlink_id || null,
-    event_type   || 'click',
-    req.get('Referer')    || null,
+    event_type || 'click',
+    req.get('Referer') || null,
     req.get('User-Agent') || null,
     req.ip || null
   );
@@ -99,7 +99,7 @@ router.get('/shortlinks/:code', (req, res) => {
 // GET /api/public/pages/all — list all active pages (for store-tab switcher)
 router.get('/pages/all', (req, res) => {
   const pages = db.prepare(
-    'SELECT id, title, slug, headline, store_slug FROM pages WHERE is_active = 1 ORDER BY sort_order ASC, id ASC'
+    'SELECT id, title, slug, headline, store_slug FROM pages WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order ASC, id ASC'
   ).all();
   res.json({ ok: true, data: { pages } });
 });

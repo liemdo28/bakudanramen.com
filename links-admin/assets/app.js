@@ -17,6 +17,8 @@
     user: JSON.parse(localStorage.getItem('bkdn_user') || 'null'),
     currentPage: null,   // page object being edited
     currentButtons: [],  // buttons for current page editor
+    safeDraft: null,      // isolated Safe Rebuild draft
+    safeDraftId: null,
     dragSrc: null,       // drag-and-drop source element
   };
 
@@ -39,14 +41,17 @@
     }
 
     const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, data };
+    const normalized = data && data.data && typeof data.data === 'object'
+      ? { ...data.data, ok: data.ok, success: data.success, message: data.message, error: data.error }
+      : data;
+    return { ok: res.ok, status: res.status, data: normalized };
   }
 
   const GET = (path) => api('GET', path);
   const POST = (path, body) => api('POST', path, body);
   const PUT = (path, body) => api('PUT', path, body);
   const PATCH = (path, body) => api('PATCH', path, body);
-  const DELETE = (path) => api('DELETE', path);
+  const DELETE = (path, body = null) => api('DELETE', path, body);
 
   /* ═══════════════════════════════════════════════════════════════════
      AUTH
@@ -517,14 +522,14 @@
         showAlert('Something went wrong. Please try again.');
         return;
       }
-      if (res.ok && res.data.success) {
+      if (res.ok && (res.data.success || res.data.token)) {
         saveAuth(res.data.token, res.data.user);
         navigate('/dashboard');
         return;
       }
 
       // Map backend messages to user-friendly copy
-      const msg = res.data?.message || '';
+      const msg = res.data?.message || res.data?.error || '';
       if (/inactive/i.test(msg)) {
         showAlert('This account is inactive. Please contact the administrator.');
       } else if (/password/i.test(msg) || /email/i.test(msg) || res.status === 401) {
@@ -803,8 +808,16 @@
     const quickActionsHtml = `
     <div class="dash-quick-grid">
       <button class="dash-quick-btn" onclick="BKDN.navigate_('#/pages')">
-        ${iconPages()} <span class="dash-quick-label">Manage Pages</span>
-        <span class="dash-quick-sub">Edit buttons &amp; content</span>
+        ${iconPages()} <span class="dash-quick-label">Link Hub Manager</span>
+        <span class="dash-quick-sub">Manage customer-facing links</span>
+      </button>
+      <button class="dash-quick-btn" onclick="BKDN.navigate_('#/pages')">
+        🎁 <span class="dash-quick-label">Add Rewards CTA</span>
+        <span class="dash-quick-sub">Quick-add rewards to a location</span>
+      </button>
+      <button class="dash-quick-btn" onclick="BKDN.navigate_('#/pages')">
+        📷 <span class="dash-quick-label">Add Social Link</span>
+        <span class="dash-quick-sub">Instagram, Facebook, and more</span>
       </button>
       <button class="dash-quick-btn" onclick="window.open('${escHtml(CFG.siteUrl)}/links/','_blank')">
         ${iconExt()} <span class="dash-quick-label">View Public</span>
@@ -1024,11 +1037,14 @@
   }
 
   async function deletePage(id, title) {
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    const res = await DELETE('/admin/pages/' + id);
+    const confirm_text = prompt(`Delete "${title}"? A recovery snapshot will be saved first. Type DELETE to continue.`);
+    if (confirm_text !== 'DELETE') return;
+    const res = await DELETE('/admin/pages/' + id, { confirm_text });
     if (res?.ok) {
       toast('Page deleted.');
       viewPages();
+    } else if (res?.status === 409) {
+      toast(res.data?.error || 'Confirmation required.', 'error');
     } else {
       toast('Failed to delete page.', 'error');
     }
@@ -1064,6 +1080,8 @@
       <a href="${previewUrl}" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} Preview Live</a>
       ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="BKDN.savePage()" id="btn-save-page">Save Draft</button>` : ''}
       ${canEdit ? `<button class="btn btn-sm btn-${p.is_active ? 'secondary' : 'primary'}" onclick="BKDN.togglePageActive()" id="btn-publish-page">${p.is_active ? 'Unpublish' : 'Publish'}</button>` : ''}
+      ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.openSafeRebuild()">${iconPublish()} Safe Rebuild</button>` : ''}
+      ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="BKDN.openRollbackPanel()">Rollback</button>` : ''}
       ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="BKDN.verifyPublicSync('${escHtml(p.slug)}')" title="Check public page matches admin state">${iconSync()} Verify Sync</button>` : ''}
       <a href="#/pages" class="btn btn-ghost btn-sm" style="margin-left:auto">&#8592; Back</a>
     </div>
@@ -1266,6 +1284,7 @@
       const publishBtn = document.getElementById('btn-publish-page');
       if (publishBtn) publishBtn.textContent = isNowActive ? 'Unpublish' : 'Publish';
       toast(isNowActive ? 'Page published!' : 'Page unpublished.');
+      addAuditEntry(isNowActive ? 'publish' : 'unpublish', `${isNowActive ? 'Published' : 'Unpublished'} ${state.currentPage.title}`);
     } else {
       toast('Failed to update page status.', 'error');
     }
@@ -1313,9 +1332,20 @@
   ═══════════════════════════════════════════════════════════════════ */
   function buildButtonsTab(canEdit) {
     return `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <p style="color:#64748b;font-size:13px;margin:0">Drag rows to reorder. Click edit to change details.</p>
-      ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.openAddButton()">${iconPlus()} Add CTA</button>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+      <div>
+        <p style="color:#64748b;font-size:13px;margin:0 0 6px 0">Drag rows to reorder. Click edit to change details.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.openSmartCTABuilder()">⚡ Smart Add CTA</button>` : ''}
+          ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="BKDN.openAddButton()">${iconPlus()} Manual CTA</button>` : ''}
+          ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="BKDN.openBulkCTABuilder()">📦 Add to All Locations</button>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="BKDN.runCTAHealthCheck()">🔍 Health Check</button>
+        <button class="btn btn-ghost btn-sm" onclick="BKDN.viewAuditLog()">📝 Recently Changed</button>
+        <button class="btn btn-ghost btn-sm" onclick="BKDN.openCustomerPreview()">📱 Preview as Customer</button>
+      </div>
     </div>
     <div id="btn-list" class="btn-list"></div>
   `;
@@ -1370,15 +1400,15 @@
       </div>
       <div class="btn-row-toggles" style="display:flex;gap:12px;align-items:center;flex-shrink:0">
         <div style="text-align:center">
-          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Visible</div>
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Visible to Customers</div>
           <label class="toggle"><input type="checkbox" ${visible ? 'checked' : ''} onchange="BKDN.toggleVisible(${b.id},this.checked)"><span class="toggle-slider"></span></label>
         </div>
         <div style="text-align:center">
-          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Enabled</div>
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Clickable</div>
           <label class="toggle"><input type="checkbox" ${enabled ? 'checked' : ''} onchange="BKDN.toggleButton(${b.id},this.checked)"><span class="toggle-slider"></span></label>
         </div>
         <div style="text-align:center">
-          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Featured</div>
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px">Highlight</div>
           <label class="toggle"><input type="checkbox" ${featured ? 'checked' : ''} onchange="BKDN.toggleFeatured(${b.id},this.checked)"><span class="toggle-slider"></span></label>
         </div>
       </div>
@@ -1670,6 +1700,7 @@
       renderButtonList();
       closeModal();
       toast('CTA saved successfully!');
+      addAuditEntry('edit_cta', `Updated "${vals.label}" on ${state.currentPage?.title || 'page'}`);
     } else {
       toast(res?.data?.message || 'Failed to update button.', 'error');
     }
@@ -1688,12 +1719,22 @@
   }
 
   async function deleteButton(id) {
-    if (!confirm('Delete this button?')) return;
-    const res = await DELETE('/admin/buttons/' + id);
+    const btn = state.currentButtons.find(b => b.id === id);
+    const protectedLabel = /order online|main website|visit main website|locations|get directions/i.test(btn?.label || '');
+    let confirm_text = '';
+    if (protectedLabel) {
+      confirm_text = prompt(`"${btn.label}" is protected. Type DELETE to remove it.`);
+      if (confirm_text !== 'DELETE') return;
+    } else if (!confirm('Delete this button? A recovery snapshot will be saved first.')) return;
+    const res = await DELETE('/admin/buttons/' + id, { confirm_text });
     if (res?.ok) {
+      const deleted = state.currentButtons.find(b => b.id === id);
       state.currentButtons = state.currentButtons.filter(b => b.id !== id);
       renderButtonList();
       toast('Button deleted.');
+      addAuditEntry('delete_cta', `Deleted "${deleted?.label || 'CTA'}" from ${state.currentPage?.title || 'page'}`);
+    } else if (res?.status === 409) {
+      toast(res.data?.error || 'Confirmation required.', 'error');
     } else {
       toast('Failed to delete button.', 'error');
     }
@@ -2488,6 +2529,749 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════
+     CTA TEMPLATES — Prebuilt CTA Types
+  ═══════════════════════════════════════════════════════════════════ */
+  const CTA_TEMPLATES = [
+    { id: 'order', label: 'Order Online', icon_key: 'order', style_variant: 'primary', subtitle: 'Delivery & pickup', url_hint: 'order.toasttab.com', new_tab: 1 },
+    { id: 'rewards', label: 'Join Rewards', icon_key: 'gift', style_variant: 'primary', subtitle: 'Earn points on every visit', url_hint: 'toasttab.com/rewards', new_tab: 1 },
+    { id: 'instagram', label: 'Follow on Instagram', icon_key: 'instagram', style_variant: 'secondary', subtitle: '@bakudanramen', url_hint: 'instagram.com/bakudanramen', new_tab: 1 },
+    { id: 'facebook', label: 'Facebook', icon_key: 'facebook', style_variant: 'secondary', subtitle: '', url_hint: 'facebook.com', new_tab: 1 },
+    { id: 'directions', label: 'Get Directions', icon_key: 'directions', style_variant: 'secondary', subtitle: 'Open in Maps', url_hint: 'maps.google.com', new_tab: 1 },
+    { id: 'phone', label: 'Call Us', icon_key: 'phone', style_variant: 'secondary', subtitle: '', url_hint: 'tel:', new_tab: 0 },
+    { id: 'menu', label: 'View Menu', icon_key: 'menu', style_variant: 'secondary', subtitle: 'Full menu & prices', url_hint: 'bakudanramen.com/menu', new_tab: 1 },
+    { id: 'waitlist', label: 'Join Waitlist', icon_key: 'events', style_variant: 'primary', subtitle: 'Skip the line', url_hint: 'toasttab.com/waitlist', new_tab: 1 },
+    { id: 'reservation', label: 'Make Reservation', icon_key: 'events', style_variant: 'primary', subtitle: 'Book a table', url_hint: '', new_tab: 1 },
+    { id: 'review', label: 'Leave a Review', icon_key: 'external', style_variant: 'secondary', subtitle: 'Help us grow!', url_hint: 'g.page/review', new_tab: 1 },
+    { id: 'delivery', label: 'Delivery', icon_key: 'order', style_variant: 'secondary', subtitle: 'DoorDash, UberEats', url_hint: '', new_tab: 1 },
+    { id: 'promo', label: 'Special Offer', icon_key: 'ticket', style_variant: 'primary', subtitle: 'Limited time!', url_hint: '', new_tab: 1 },
+    { id: 'website', label: 'Visit Website', icon_key: 'website', style_variant: 'secondary', subtitle: 'bakudanramen.com', url_hint: 'https://www.bakudanramen.com', new_tab: 1 },
+    { id: 'email', label: 'Email Us', icon_key: 'email', style_variant: 'secondary', subtitle: '', url_hint: 'mailto:', new_tab: 0 },
+  ];
+
+  /* ── Location-specific URL mappings ──────────────────────────────── */
+  const LOCATION_URLS = {
+    rim: {
+      order: 'https://order.toasttab.com/online/bakudan-ramen-the-rim',
+      rewards: 'https://www.toasttab.com/bakudan-ramen-the-rim/rewardsSignup',
+      waitlist: 'https://www.toasttab.com/bakudan-ramen-the-rim/findTime',
+      directions: 'https://maps.google.com/?q=17619+La+Cantera+Pkwy+%23208+San+Antonio+TX',
+      phone: 'tel:+12105551234',
+    },
+    'stone-oak': {
+      order: 'https://order.toasttab.com/online/bakudan-ramen-stone-oak',
+      rewards: 'https://www.toasttab.com/bakudan-ramen-stone-oak/rewardsSignup',
+      waitlist: 'https://www.toasttab.com/bakudan-ramen-stone-oak/findTime',
+      directions: 'https://maps.google.com/?q=22506+US+Hwy+281+N+%23106+San+Antonio+TX',
+      phone: 'tel:+12105555678',
+    },
+    bandera: {
+      order: 'https://order.toasttab.com/online/bakudan-ramen-bandera',
+      rewards: 'https://www.toasttab.com/bakudan-ramen-bandera/rewardsSignup',
+      waitlist: 'https://www.toasttab.com/bakudan-ramen-bandera/findTime',
+      directions: 'https://maps.google.com/?q=11309+Bandera+Rd+%23111+San+Antonio+TX',
+      phone: 'tel:+12105559012',
+    },
+  };
+
+  /* ── Smart CTA Builder (location-aware) ──────────────────────────── */
+  function openSmartCTABuilder() {
+    const stores = CFG.project?.stores || [];
+    const currentStore = state.currentPage?.store_slug || '';
+
+    const storeOpts = stores.map(s =>
+      `<option value="${s.slug}" ${s.slug === currentStore ? 'selected' : ''}>${escHtml(s.name)}</option>`
+    ).join('');
+
+    const templateGrid = CTA_TEMPLATES.map(t => `
+      <button class="cta-tpl-card" onclick="BKDN.applyTemplate('${t.id}')" data-tpl="${t.id}">
+        <div class="cta-tpl-icon">${getTemplateIcon(t.icon_key)}</div>
+        <div class="cta-tpl-label">${escHtml(t.label)}</div>
+        <div class="cta-tpl-sub">${escHtml(t.subtitle || '')}</div>
+      </button>
+    `).join('');
+
+    openModal('Add CTA — Choose Type', `
+      <div class="smart-builder">
+        <div class="smart-builder-location">
+          <label class="form-label">Location</label>
+          <select id="sb-location" class="form-control" onchange="BKDN._sbLocationChanged()">
+            ${storeOpts}
+          </select>
+        </div>
+        <div class="smart-builder-grid" id="sb-template-grid">
+          ${templateGrid}
+        </div>
+        <div id="sb-form-area" style="display:none">
+          <hr style="border-color:#334155;margin:20px 0">
+          <div id="sb-form-content"></div>
+        </div>
+      </div>
+    `, `
+      <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="sb-submit-btn" style="display:none" onclick="BKDN.submitSmartCTA()">Add CTA</button>
+    `);
+  }
+
+  function getTemplateIcon(iconKey) {
+    const icons = {
+      order: '🛒', gift: '🎁', instagram: '📷', facebook: '💬',
+      directions: '📍', phone: '📞', menu: '📋', events: '📅',
+      external: '⭐', ticket: '🎟️', website: '🌐', email: '✉️',
+    };
+    return icons[iconKey] || '🔗';
+  }
+
+  function applyTemplate(tplId) {
+    const tpl = CTA_TEMPLATES.find(t => t.id === tplId);
+    if (!tpl) return;
+
+    const location = document.getElementById('sb-location')?.value || '';
+    const locationUrls = LOCATION_URLS[location] || {};
+    const autoUrl = locationUrls[tplId] || '';
+
+    // Show form area with pre-filled values
+    const formArea = document.getElementById('sb-form-area');
+    const formContent = document.getElementById('sb-form-content');
+    const submitBtn = document.getElementById('sb-submit-btn');
+    if (formArea) formArea.style.display = 'block';
+    if (submitBtn) submitBtn.style.display = '';
+
+    // Highlight selected template
+    document.querySelectorAll('.cta-tpl-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`.cta-tpl-card[data-tpl="${tplId}"]`)?.classList.add('selected');
+
+    if (formContent) {
+      formContent.innerHTML = `
+        <input type="hidden" id="sb-tpl-id" value="${tplId}">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Button Text</label>
+            <input id="sb-label" class="form-control" value="${escHtml(tpl.label)}">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Link URL ${autoUrl ? '<span class="badge badge-green" style="font-size:10px;margin-left:6px">Auto-filled for ' + escHtml(location) + '</span>' : ''}</label>
+            <input id="sb-url" class="form-control" value="${escHtml(autoUrl)}" placeholder="${escHtml(tpl.url_hint || 'https://…')}">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Subtitle <span style="color:#64748b;font-weight:400">(optional)</span></label>
+            <input id="sb-subtitle" class="form-control" value="${escHtml(tpl.subtitle || '')}">
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:12px 16px;background:#0f172a;border-radius:8px;font-size:12px;color:#64748b">
+          <strong style="color:#94a3b8">Auto-configured:</strong> Icon = ${escHtml(tpl.icon_key)}, Style = ${escHtml(tpl.style_variant)}, Opens in ${tpl.new_tab ? 'new tab' : 'same tab'}
+        </div>
+      `;
+    }
+  }
+
+  function _sbLocationChanged() {
+    // Re-apply template if one is selected
+    const tplId = document.getElementById('sb-tpl-id')?.value;
+    if (tplId) applyTemplate(tplId);
+  }
+
+  async function submitSmartCTA() {
+    const tplId = document.getElementById('sb-tpl-id')?.value;
+    const tpl = CTA_TEMPLATES.find(t => t.id === tplId);
+    if (!tpl) { toast('Select a CTA type first.', 'error'); return; }
+
+    const label = document.getElementById('sb-label')?.value.trim();
+    const url = document.getElementById('sb-url')?.value.trim();
+    const subtitle = document.getElementById('sb-subtitle')?.value.trim();
+
+    if (!label || !url) {
+      toast('Button text and URL are required.', 'error');
+      return;
+    }
+
+    const p = state.currentPage;
+    if (!p) { toast('No page selected.', 'error'); return; }
+
+    const payload = {
+      label,
+      url,
+      subtitle: subtitle || null,
+      icon_key: tpl.icon_key,
+      style_variant: tpl.style_variant,
+      start_at: null,
+      end_at: null,
+      is_active: 1,
+      enabled: 1,
+      opens_in_new_tab: tpl.new_tab,
+      is_featured: tpl.style_variant === 'primary' ? 1 : 0,
+      sort_order: state.currentButtons.length,
+    };
+
+    const res = await POST('/admin/pages/' + p.id + '/buttons', payload);
+    if (res?.ok) {
+      state.currentButtons.push({ id: res.data.id, ...payload });
+      renderButtonList();
+      closeModal();
+      toast('CTA added successfully!');
+      addAuditEntry('add_cta', `Added "${label}" (${tpl.id}) to ${p.title}`);
+    } else {
+      toast(res?.data?.message || 'Failed to add CTA.', 'error');
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     MULTI-LOCATION BULK ACTIONS
+  ═══════════════════════════════════════════════════════════════════ */
+  function openBulkCTABuilder() {
+    const stores = CFG.project?.stores || [];
+    const templateOpts = CTA_TEMPLATES.map(t =>
+      `<option value="${t.id}">${escHtml(t.label)}</option>`
+    ).join('');
+
+    openModal('Add CTA to All Locations', `
+      <div class="form-group">
+        <label class="form-label">CTA Type</label>
+        <select id="bulk-tpl" class="form-control">${templateOpts}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Locations</label>
+        <div class="bulk-location-checks">
+          ${stores.map(s => `
+            <label class="bulk-check">
+              <input type="checkbox" value="${escHtml(s.slug)}" checked>
+              <span>${escHtml(s.name)}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Custom URL <span style="color:#64748b;font-weight:400">(leave blank for auto-fill per location)</span></label>
+        <input id="bulk-url" class="form-control" placeholder="Auto-filled per location if blank">
+      </div>
+      <div style="margin-top:12px;padding:12px 16px;background:#0f172a;border-radius:8px;font-size:12px;color:#64748b">
+        This will create the selected CTA on each checked location's page with the correct URL auto-filled.
+      </div>
+    `, `
+      <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="BKDN.executeBulkCTA()">Create for All</button>
+    `);
+  }
+
+  async function executeBulkCTA() {
+    const tplId = document.getElementById('bulk-tpl')?.value;
+    const tpl = CTA_TEMPLATES.find(t => t.id === tplId);
+    if (!tpl) return;
+
+    const customUrl = document.getElementById('bulk-url')?.value.trim();
+    const checkedSlugs = [...document.querySelectorAll('.bulk-location-checks input:checked')].map(el => el.value);
+
+    if (!checkedSlugs.length) { toast('Select at least one location.', 'error'); return; }
+
+    // Get all pages to find matching store pages
+    const pagesRes = await GET('/admin/pages');
+    const pages = pagesRes?.data?.pages || [];
+
+    let created = 0;
+    let failed = 0;
+
+    for (const slug of checkedSlugs) {
+      const page = pages.find(p => p.store_slug === slug);
+      if (!page) { failed++; continue; }
+
+      const locationUrls = LOCATION_URLS[slug] || {};
+      const url = customUrl || locationUrls[tplId] || '';
+      if (!url) { failed++; continue; }
+
+      const payload = {
+        label: tpl.label,
+        url,
+        subtitle: tpl.subtitle || null,
+        icon_key: tpl.icon_key,
+        style_variant: tpl.style_variant,
+        is_active: 1,
+        enabled: 1,
+        opens_in_new_tab: tpl.new_tab,
+        is_featured: tpl.style_variant === 'primary' ? 1 : 0,
+        sort_order: 99,
+      };
+
+      const res = await POST('/admin/pages/' + page.id + '/buttons', payload);
+      if (res?.ok) created++;
+      else failed++;
+    }
+
+    closeModal();
+    if (created > 0) toast(`Created ${created} CTA${created > 1 ? 's' : ''} across locations!`);
+    if (failed > 0) toast(`${failed} location${failed > 1 ? 's' : ''} failed or missing URL.`, 'error');
+    addAuditEntry('bulk_cta', `Bulk added "${tpl.label}" to ${created} locations`);
+
+    // Refresh if on page editor
+    if (state.currentPage) {
+      const bRes = await GET('/admin/pages/' + state.currentPage.id + '/buttons');
+      state.currentButtons = bRes?.data?.buttons || [];
+      renderButtonList();
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     CTA HEALTH CHECKER
+  ═══════════════════════════════════════════════════════════════════ */
+  async function runCTAHealthCheck() {
+    const p = state.currentPage;
+    if (!p) { toast('Open a page first.', 'error'); return; }
+
+    const issues = [];
+    const buttons = state.currentButtons;
+
+    for (const b of buttons) {
+      // Check for missing URL
+      if (!b.url) {
+        issues.push({ btn: b, type: 'missing_url', msg: 'No URL set' });
+        continue;
+      }
+
+      // Check for duplicate labels
+      const dupes = buttons.filter(x => x.id !== b.id && x.label === b.label);
+      if (dupes.length) {
+        issues.push({ btn: b, type: 'duplicate', msg: 'Duplicate label' });
+      }
+
+      // Check for missing icon
+      if (!b.icon_key) {
+        issues.push({ btn: b, type: 'no_icon', msg: 'No icon assigned' });
+      }
+
+      // Check expired schedule
+      if (b.end_at && new Date(b.end_at) < new Date()) {
+        issues.push({ btn: b, type: 'expired', msg: 'Schedule expired' });
+      }
+
+      // Check URL reachability (lightweight — just pattern check)
+      if (b.url && !b.url.match(/^(https?:\/\/|tel:|mailto:)/)) {
+        issues.push({ btn: b, type: 'invalid_url', msg: 'URL format looks invalid' });
+      }
+    }
+
+    if (!issues.length) {
+      openModal('CTA Health Check', `
+        <div style="text-align:center;padding:30px">
+          <div style="font-size:48px;margin-bottom:12px">✅</div>
+          <h3 style="color:#e2e8f0;margin-bottom:8px">All CTAs are healthy!</h3>
+          <p style="color:#64748b;font-size:13px">${buttons.length} CTA${buttons.length !== 1 ? 's' : ''} checked. No issues found.</p>
+        </div>
+      `);
+      return;
+    }
+
+    const issueRows = issues.map(i => {
+      const typeIcons = { missing_url: '🔗', duplicate: '📋', no_icon: '🎨', expired: '⏰', invalid_url: '⚠️' };
+      const typeColors = { missing_url: '#ef4444', duplicate: '#f59e0b', no_icon: '#64748b', expired: '#f59e0b', invalid_url: '#ef4444' };
+      return `
+        <div class="health-issue-row">
+          <span class="health-issue-icon" style="color:${typeColors[i.type] || '#64748b'}">${typeIcons[i.type] || '❓'}</span>
+          <div class="health-issue-body">
+            <div style="font-weight:500;color:#e2e8f0">${escHtml(i.btn.label || '(untitled)')}</div>
+            <div style="font-size:12px;color:#94a3b8">${escHtml(i.msg)}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="BKDN.openEditButton(${i.btn.id})">Fix</button>
+        </div>
+      `;
+    }).join('');
+
+    openModal('CTA Health Check', `
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">⚠️</span>
+        <span style="color:#fbbf24;font-weight:600">${issues.length} issue${issues.length !== 1 ? 's' : ''} found</span>
+      </div>
+      <div class="health-issues-list">${issueRows}</div>
+    `);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     AUDIT LOG — Recently Changed
+  ═══════════════════════════════════════════════════════════════════ */
+  function getAuditLog() {
+    try {
+      return JSON.parse(localStorage.getItem('bkdn_audit') || '[]');
+    } catch { return []; }
+  }
+
+  function addAuditEntry(action, detail) {
+    const log = getAuditLog();
+    log.unshift({
+      action,
+      detail,
+      user: state.user?.name || 'Unknown',
+      timestamp: new Date().toISOString(),
+    });
+    // Keep last 50 entries
+    localStorage.setItem('bkdn_audit', JSON.stringify(log.slice(0, 50)));
+  }
+
+  function viewAuditLog() {
+    const log = getAuditLog();
+
+    const rows = log.length ? log.map(entry => {
+      const actionIcons = {
+        add_cta: '➕', edit_cta: '✏️', delete_cta: '🗑️',
+        bulk_cta: '📦', publish: '🚀', unpublish: '⏸️',
+      };
+      const time = new Date(entry.timestamp);
+      const relative = getRelativeTime(time);
+      return `
+        <div class="audit-row">
+          <span class="audit-icon">${actionIcons[entry.action] || '📝'}</span>
+          <div class="audit-body">
+            <div class="audit-detail">${escHtml(entry.detail)}</div>
+            <div class="audit-meta">${escHtml(entry.user)} · ${relative}</div>
+          </div>
+        </div>
+      `;
+    }).join('') : '<div style="text-align:center;padding:30px;color:#64748b">No recent changes recorded.</div>';
+
+    openModal('Recently Changed', `
+      <div class="audit-log-list">${rows}</div>
+    `);
+  }
+
+  function getRelativeTime(date) {
+    const now = new Date();
+    const diff = now - date;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return days + 'd ago';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     CUSTOMER PREVIEW
+  ═══════════════════════════════════════════════════════════════════ */
+  function openCustomerPreview() {
+    const p = state.currentPage;
+    if (!p) { toast('Open a page first.', 'error'); return; }
+
+    const previewUrl = `${CFG.siteUrl}/links/${p.slug}?_preview=1&_t=${Date.now()}`;
+
+    openModal('Customer Preview — ' + p.title, `
+      <div class="customer-preview-container">
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <iframe id="preview-iframe" src="${escHtml(previewUrl)}" class="phone-screen"></iframe>
+        </div>
+        <div class="preview-actions">
+          <a href="${escHtml(previewUrl)}" target="_blank" class="btn btn-ghost btn-sm">${iconExt()} Open Full Size</a>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('preview-iframe').src='${escHtml(previewUrl)}'">↻ Refresh</button>
+        </div>
+      </div>
+    `);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     SAFE REBUILD MODE
+  ═══════════════════════════════════════════════════════════════════ */
+  async function openSafeRebuild() {
+    const p = state.currentPage;
+    if (!p) { toast('Open a page first.', 'error'); return; }
+    const res = await GET('/admin/rebuild-templates');
+    const templates = res?.data?.templates || [];
+    const cards = templates.map(t => `
+      <button class="safe-template-card" onclick="BKDN.startSafeRebuild('${escHtml(t.id)}')">
+        <span class="safe-template-title">${escHtml(t.name)}</span>
+        <span class="safe-template-desc">${escHtml(t.description)}</span>
+      </button>
+    `).join('');
+
+    openModal('Safe Rebuild Mode', `
+      <div class="safe-note">
+        Current live page will be snapshotted first. Maria rebuilds in an isolated draft, previews it, then publishes after reviewing the diff.
+      </div>
+      <div class="safe-template-grid">${cards}</div>
+    `, `
+      <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
+    `);
+  }
+
+  async function startSafeRebuild(templateId) {
+    const p = state.currentPage;
+    if (!p) return;
+    const res = await POST('/admin/pages/' + p.id + '/rebuild/start', { template_id: templateId });
+    if (!res?.ok) {
+      toast(res?.data?.error || 'Could not start rebuild.', 'error');
+      return;
+    }
+    state.safeDraftId = res.data.draft_id;
+    state.safeDraft = res.data.draft;
+    addAuditEntry('safe_rebuild', `Started Safe Rebuild for ${p.title}`);
+    renderSafeDraftEditor();
+  }
+
+  function renderSafeDraftEditor() {
+    const draft = state.safeDraft;
+    if (!draft) return;
+    const rows = (draft.buttons || []).map((b, i) => `
+      <div class="safe-draft-row" data-idx="${i}">
+        <div class="safe-draft-order">
+          <button class="btn btn-ghost btn-sm" onclick="BKDN.moveDraftCTA(${i},-1)" title="Move up">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="BKDN.moveDraftCTA(${i},1)" title="Move down">↓</button>
+        </div>
+        <div class="safe-draft-fields">
+          <input class="form-control safe-label" value="${escHtml(b.label || '')}" placeholder="Button text" oninput="BKDN.syncDraftFromInputs()">
+          <input class="form-control safe-url" value="${escHtml(b.url || '')}" placeholder="https://..." oninput="BKDN.syncDraftFromInputs()">
+          <input class="form-control safe-subtitle" value="${escHtml(b.subtitle || '')}" placeholder="Subtitle" oninput="BKDN.syncDraftFromInputs()">
+        </div>
+        <div class="safe-draft-options">
+          <select class="form-control safe-icon" onchange="BKDN.syncDraftFromInputs()">
+            ${['order','website','menu','gift','directions','instagram','facebook','phone','events','ticket','external'].map(k => `<option value="${k}" ${(b.icon_key || '') === k ? 'selected' : ''}>${k}</option>`).join('')}
+          </select>
+          <select class="form-control safe-style" onchange="BKDN.syncDraftFromInputs()">
+            ${['primary','secondary','order_sub','coming_soon'].map(k => `<option value="${k}" ${(b.style_variant || 'secondary') === k ? 'selected' : ''}>${k}</option>`).join('')}
+          </select>
+          <label class="safe-check"><input class="safe-visible" type="checkbox" ${b.is_active !== 0 ? 'checked' : ''} onchange="BKDN.syncDraftFromInputs()"> Visible</label>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="BKDN.removeDraftCTA(${i})">${iconTrash()}</button>
+      </div>
+    `).join('');
+
+    openModal('Safe Rebuild Draft', `
+      <div class="safe-workspace">
+        <div class="safe-workspace-main">
+          <div class="safe-note">Draft workspace. Live public page is unchanged until Publish Review is approved.</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Page Title</label>
+              <input id="safe-page-title" class="form-control" value="${escHtml(draft.page?.title || '')}" oninput="BKDN.syncDraftFromInputs()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Headline</label>
+              <input id="safe-page-headline" class="form-control" value="${escHtml(draft.page?.headline || '')}" oninput="BKDN.syncDraftFromInputs()">
+            </div>
+          </div>
+          <div class="safe-toolbar">
+            <button class="btn btn-secondary btn-sm" onclick="BKDN.addDraftCTA('order')">Add Order</button>
+            <button class="btn btn-secondary btn-sm" onclick="BKDN.addDraftCTA('rewards')">Add Rewards</button>
+            <button class="btn btn-secondary btn-sm" onclick="BKDN.addDraftCTA('instagram')">Add Social</button>
+            <button class="btn btn-ghost btn-sm" onclick="BKDN.addDraftCTA()">Blank CTA</button>
+          </div>
+          <div id="safe-draft-list" class="safe-draft-list">${rows || '<div class="empty-state"><p>No CTAs in this draft.</p></div>'}</div>
+        </div>
+        <div class="safe-preview-panel">
+          <div class="safe-preview-toggle">
+            <button class="period-btn active" onclick="BKDN.renderDraftPreview('mobile', this)">Mobile</button>
+            <button class="period-btn" onclick="BKDN.renderDraftPreview('desktop', this)">Desktop</button>
+          </div>
+          <div id="safe-preview-target"></div>
+        </div>
+      </div>
+    `, `
+      <button class="btn btn-ghost" onclick="BKDN.discardSafeDraft()">Discard Draft</button>
+      <button class="btn btn-secondary" onclick="BKDN.saveSafeDraft()">Save Draft</button>
+      <button class="btn btn-primary" onclick="BKDN.openPublishReview()">Publish Review</button>
+    `);
+    renderDraftPreview('mobile');
+  }
+
+  function syncDraftFromInputs() {
+    if (!state.safeDraft) return;
+    state.safeDraft.page.title = document.getElementById('safe-page-title')?.value.trim() || state.safeDraft.page.title;
+    state.safeDraft.page.headline = document.getElementById('safe-page-headline')?.value.trim() || null;
+    state.safeDraft.buttons = [...document.querySelectorAll('.safe-draft-row')].map((row, i) => ({
+      label: row.querySelector('.safe-label')?.value.trim() || '',
+      url: row.querySelector('.safe-url')?.value.trim() || '',
+      subtitle: row.querySelector('.safe-subtitle')?.value.trim() || null,
+      icon_key: row.querySelector('.safe-icon')?.value || null,
+      style_variant: row.querySelector('.safe-style')?.value || 'secondary',
+      sort_order: i,
+      is_active: row.querySelector('.safe-visible')?.checked ? 1 : 0,
+      enabled: 1,
+      is_featured: row.querySelector('.safe-style')?.value === 'primary' ? 1 : 0,
+      opens_in_new_tab: 1,
+      start_at: null,
+      end_at: null,
+    })).filter(b => b.label || b.url);
+    renderDraftPreview();
+  }
+
+  function draftTemplate(type) {
+    const map = {
+      order: { label: 'Order Online', url: 'https://www.bakudanramen.com/order.html', subtitle: 'Pickup and delivery', icon_key: 'order', style_variant: 'primary' },
+      rewards: { label: 'Join Rewards', url: 'https://www.toasttab.com/bakudanramen/rewardsSignup', subtitle: 'Earn points on every visit', icon_key: 'gift', style_variant: 'primary' },
+      instagram: { label: 'Instagram', url: 'https://www.instagram.com/bakudanramen/', subtitle: '@bakudanramen', icon_key: 'instagram', style_variant: 'secondary' },
+    };
+    return map[type] || { label: '', url: '', subtitle: '', icon_key: 'external', style_variant: 'secondary' };
+  }
+
+  function addDraftCTA(type) {
+    syncDraftFromInputs();
+    state.safeDraft.buttons.push({
+      ...draftTemplate(type),
+      sort_order: state.safeDraft.buttons.length,
+      is_active: 1,
+      enabled: 1,
+      is_featured: type === 'order' || type === 'rewards' ? 1 : 0,
+      opens_in_new_tab: 1,
+    });
+    renderSafeDraftEditor();
+  }
+
+  function removeDraftCTA(index) {
+    syncDraftFromInputs();
+    state.safeDraft.buttons.splice(index, 1);
+    renderSafeDraftEditor();
+  }
+
+  function moveDraftCTA(index, delta) {
+    syncDraftFromInputs();
+    const next = index + delta;
+    if (next < 0 || next >= state.safeDraft.buttons.length) return;
+    const [item] = state.safeDraft.buttons.splice(index, 1);
+    state.safeDraft.buttons.splice(next, 0, item);
+    renderSafeDraftEditor();
+  }
+
+  async function saveSafeDraft() {
+    syncDraftFromInputs();
+    const res = await PUT('/admin/rebuild-drafts/' + state.safeDraftId, { snapshot: state.safeDraft });
+    if (res?.ok) {
+      state.safeDraft = res.data.draft;
+      toast('Safe draft saved.');
+    } else {
+      toast(res?.data?.error || 'Draft save failed.', 'error');
+    }
+  }
+
+  async function openPublishReview() {
+    await saveSafeDraft();
+    const res = await GET('/admin/rebuild-drafts/' + state.safeDraftId + '/diff');
+    if (!res?.ok) { toast('Could not load publish diff.', 'error'); return; }
+    const d = res.data.diff;
+    const warnings = [];
+    if (d.removed_count) warnings.push(`${d.removed_count} CTA${d.removed_count > 1 ? 's' : ''} will be removed`);
+    if ((d.removed || []).some(x => /reward/i.test(x))) warnings.push('Rewards access is being removed or replaced');
+    if ((d.removed || []).some(x => /order/i.test(x))) warnings.push('Order access is being removed or replaced');
+
+    openModal('Publish Review', `
+      <div class="publish-diff">
+        <div class="diff-stat"><strong>${d.added_count}</strong><span>Added</span></div>
+        <div class="diff-stat"><strong>${d.changed_count}</strong><span>Changed</span></div>
+        <div class="diff-stat danger"><strong>${d.removed_count}</strong><span>Removed</span></div>
+      </div>
+      ${warnings.length ? `<div class="safe-warning">${warnings.map(escHtml).join('<br>')}</div>` : ''}
+      <div class="diff-list">
+        <div><strong>Added:</strong> ${(d.added || []).map(escHtml).join(', ') || 'None'}</div>
+        <div><strong>Changed:</strong> ${(d.changed || []).map(escHtml).join(', ') || 'None'}</div>
+        <div><strong>Removed:</strong> ${(d.removed || []).map(escHtml).join(', ') || 'None'}</div>
+      </div>
+      <div class="safe-note">Publishing will snapshot the current live page first, then replace live CTAs with this draft.</div>
+    `, `
+      <button class="btn btn-ghost" onclick="BKDN.renderSafeDraftEditor()">Back to Draft</button>
+      <button class="btn btn-primary" onclick="BKDN.publishSafeDraft(${d.removed_count >= d.live_button_count && d.live_button_count > 0 ? 1 : 0})">Publish</button>
+    `);
+  }
+
+  async function publishSafeDraft(needsConfirm) {
+    let confirm_text = '';
+    if (needsConfirm) {
+      confirm_text = prompt('This replaces all live CTAs. Type PUBLISH to continue.');
+      if (confirm_text !== 'PUBLISH') return;
+    }
+    const res = await POST('/admin/rebuild-drafts/' + state.safeDraftId + '/publish', { confirm_text });
+    if (res?.ok) {
+      toast('Safe Rebuild published.');
+      addAuditEntry('publish', `Published Safe Rebuild for ${state.currentPage?.title || 'page'}`);
+      closeModal();
+      viewPageEditor(state.currentPage.id);
+    } else if (res?.status === 409) {
+      toast(res.data?.error || 'Confirmation required.', 'error');
+    } else {
+      toast(res?.data?.error || 'Publish failed.', 'error');
+    }
+  }
+
+  async function discardSafeDraft() {
+    if (!state.safeDraftId || !confirm('Discard this Safe Rebuild draft?')) return;
+    const res = await POST('/admin/rebuild-drafts/' + state.safeDraftId + '/discard', {});
+    if (res?.ok) {
+      state.safeDraft = null;
+      state.safeDraftId = null;
+      closeModal();
+      toast('Draft discarded.');
+    } else {
+      toast('Could not discard draft.', 'error');
+    }
+  }
+
+  function renderDraftPreview(mode, btn) {
+    if (btn) {
+      document.querySelectorAll('.safe-preview-toggle .period-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    const target = document.getElementById('safe-preview-target');
+    if (!target || !state.safeDraft) return;
+    const html = renderDraftPreviewHtml(state.safeDraft);
+    target.innerHTML = `<iframe class="safe-preview-frame ${mode === 'desktop' ? 'desktop' : 'mobile'}" srcdoc="${escHtml(html)}"></iframe>`;
+  }
+
+  function renderDraftPreviewHtml(draft) {
+    const buttons = (draft.buttons || []).filter(b => b.is_active !== 0).map(b => `
+      <a class="cta ${b.style_variant === 'primary' ? 'primary' : ''}" href="#">
+        <span>${escHtml(b.label)}</span>
+        ${b.subtitle ? `<small>${escHtml(b.subtitle)}</small>` : ''}
+      </a>
+    `).join('');
+    return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+      body{margin:0;background:#050505;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:32px 18px}
+      .wrap{max-width:420px;margin:0 auto}.logo{width:76px;height:76px;border-radius:50%;background:#e11d2e;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:34px}
+      h1{text-align:center;text-transform:uppercase;font-size:20px;letter-spacing:.08em;margin:0 0 8px}.sub{text-align:center;color:#9ca3af;font-size:12px;margin-bottom:24px}
+      .cta{display:block;text-decoration:none;color:#fff;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:15px 16px;margin-bottom:10px}
+      .cta.primary{background:#e11d2e;border-color:#e11d2e}.cta span{display:block;font-weight:700}.cta small{display:block;color:rgba(255,255,255,.72);margin-top:3px}
+    </style></head><body><div class="wrap"><div class="logo">爆</div><h1>${escHtml(draft.page?.title || 'Bakudan Ramen')}</h1><div class="sub">${escHtml(draft.page?.headline || 'Authentic Japanese Ramen')}</div>${buttons || '<div class="sub">No visible CTAs</div>'}</div></body></html>`;
+  }
+
+  async function openRollbackPanel() {
+    const p = state.currentPage;
+    if (!p) return;
+    const res = await GET('/admin/pages/' + p.id + '/snapshots');
+    const snaps = res?.data?.snapshots || [];
+    const rows = snaps.map(s => `
+      <div class="snapshot-row">
+        <div>
+          <div class="snapshot-title">${escHtml(s.label || s.action)}</div>
+          <div class="snapshot-meta">${escHtml(s.action)} · ${fmtDate(s.created_at)} · ${escHtml(s.user_name || 'System')}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="BKDN.restoreSnapshot(${s.id})">Restore</button>
+      </div>
+    `).join('');
+    openModal('Rollback & Recovery', `
+      <div class="safe-note">Restore brings back the full page and CTA order from a saved snapshot. The current state is snapshotted before restore.</div>
+      <button class="btn btn-danger btn-sm" onclick="BKDN.rollbackLastPublished()">Emergency Rollback to Last Published</button>
+      <div class="snapshot-list">${rows || '<div class="empty-state"><p>No snapshots yet.</p></div>'}</div>
+    `);
+  }
+
+  async function restoreSnapshot(id) {
+    if (!confirm('Restore this snapshot? Current live state will be snapshotted first.')) return;
+    const res = await POST('/admin/pages/' + state.currentPage.id + '/snapshots/' + id + '/restore', {});
+    if (res?.ok) {
+      toast('Snapshot restored.');
+      closeModal();
+      viewPageEditor(state.currentPage.id);
+    } else {
+      toast(res?.data?.error || 'Restore failed.', 'error');
+    }
+  }
+
+  async function rollbackLastPublished() {
+    if (!confirm('Emergency rollback to the last published snapshot?')) return;
+    const res = await POST('/admin/pages/' + state.currentPage.id + '/rollback-last-published', {});
+    if (res?.ok) {
+      toast('Rolled back to last published version.');
+      closeModal();
+      viewPageEditor(state.currentPage.id);
+    } else {
+      toast(res?.data?.error || 'Rollback failed.', 'error');
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
      PUBLIC API (attached to window for onclick handlers)
   ═══════════════════════════════════════════════════════════════════ */
   window.BKDN = {
@@ -2503,6 +3287,19 @@
     savePage, saveTheme, resetTheme, togglePageActive, switchTab,
     // Buttons
     openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton, toggleVisible, toggleFeatured, _updateCTAPreview,
+    // Smart CTA Builder
+    openSmartCTABuilder, applyTemplate, _sbLocationChanged, submitSmartCTA,
+    // Bulk actions
+    openBulkCTABuilder, executeBulkCTA,
+    // Health & Audit
+    runCTAHealthCheck, viewAuditLog,
+    // Customer Preview
+    openCustomerPreview,
+    // Safe Rebuild
+    openSafeRebuild, startSafeRebuild, renderSafeDraftEditor, syncDraftFromInputs,
+    addDraftCTA, removeDraftCTA, moveDraftCTA, saveSafeDraft, openPublishReview,
+    publishSafeDraft, discardSafeDraft, renderDraftPreview, openRollbackPanel,
+    restoreSnapshot, rollbackLastPublished,
     // Redirects
     openAddRedirect, addRedirect, deleteRedirect,
     // Analytics
