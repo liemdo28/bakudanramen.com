@@ -354,6 +354,59 @@ function track(label) {
     body: JSON.stringify({button_id: label, event_type: 'click'}),
   }).catch(function(){});
 }
+
+function escHtml(v) {
+  return String(v || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeUrl(url) {
+  var raw = String(url || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return 'https://' + raw;
+}
+
+function pageSlugFromPath() {
+  var parts = window.location.pathname.split('/').filter(Boolean);
+  if (parts[0] !== 'links') return '';
+  return parts[1] || '';
+}
+
+function renderDynamicLinks(page, buttons) {
+  var host = document.querySelector('.links');
+  if (!host) return;
+  host.innerHTML = buttons.map(function (b) {
+    var href = normalizeUrl(b.url);
+    var label = escHtml(b.label || b.title || 'Untitled');
+    var sub = b.subtitle ? ('<div class="lnk-sub">' + escHtml(b.subtitle) + '</div>') : '';
+    var target = b.opens_in_new_tab === 0 ? '_self' : '_blank';
+    var rel = target === '_blank' ? ' rel="noopener noreferrer"' : '';
+    return '<a class="lnk" href="' + escHtml(href) + '" target="' + target + '"' + rel +
+      ' onclick="track(' + String(b.id || 0) + ')">' +
+      '<div class="lnk-body"><div class="lnk-title">' + label + '</div>' + sub + '</div></a>';
+  }).join('');
+
+  document.title = escHtml(page.title || 'Links') + ' | Bakudan Ramen';
+}
+
+async function hydrateLinksPageBySlug() {
+  var slug = pageSlugFromPath();
+  if (!slug) return;
+  try {
+    var res = await fetch('/api/public/pages/' + encodeURIComponent(slug), { headers: { 'Accept': 'application/json' } });
+    var json = await res.json();
+    if (!res.ok || !json || !json.ok || !json.data || !json.data.page) return;
+    var data = json.data;
+    renderDynamicLinks(data.page, data.buttons || []);
+  } catch (_e) {}
+}
+
+hydrateLinksPageBySlug();
 </script>
 <script src="/js/site-config.js" defer></script>
 </body>
