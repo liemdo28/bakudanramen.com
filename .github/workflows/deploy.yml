@@ -49,5 +49,5 @@ jobs:
           port: ${{ secrets.PORT || '22' }}
           source: "/tmp/deploy/"
           target: "${{ secrets.TARGET_DIR || '/bakudanramen.com' }}"
-          strip_components: 1
+          strip_components: 2
           overwrite: true
