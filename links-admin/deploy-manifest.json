@@ -1,0 +1,27 @@
+{
+    "version": "2026.05.28-2",
+    "build": "cta-preview-refactor",
+    "commit": "c162afa",
+    "built_at": "2026-05-28T12:30:00+07:00",
+    "environment": "production",
+    "canonical_path": "/links-admin/",
+    "assets": {
+        "js": "assets/app.js?v=20260528-2",
+        "css": "assets/app.css?v=20260528-2",
+        "blog": "assets/blog-extension.js?v=20260528-2"
+    },
+    "expected_markers": [
+        "Add CTA",
+        "Button Text",
+        "Link URL",
+        "CTA added successfully",
+        "Live Preview",
+        "cta-preview-btn"
+    ],
+    "deprecated_markers": [
+        "Add Button",
+        "Label and URL are required",
+        "Visible (show on page)",
+        "Enabled (clickable)"
+    ]
+}

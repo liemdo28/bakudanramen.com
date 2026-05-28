@@ -1315,7 +1315,7 @@
     return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <p style="color:#64748b;font-size:13px;margin:0">Drag rows to reorder. Click edit to change details.</p>
-      ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.openAddButton()">${iconPlus()} Add Button</button>` : ''}
+      ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="BKDN.openAddButton()">${iconPlus()} Add CTA</button>` : ''}
     </div>
     <div id="btn-list" class="btn-list"></div>
   `;
@@ -1509,53 +1509,83 @@
     ).join('');
 
     return `
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Label *</label>
-        <input id="bf-label" class="form-control" value="${escHtml(b.label || '')}" required>
+    <div class="cta-form-layout" style="display:grid;grid-template-columns:1fr 280px;gap:24px">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Button Text *</label>
+          <input id="bf-label" class="form-control" value="${escHtml(b.label || '')}" placeholder="e.g. Order Online, View Menu" required oninput="BKDN._updateCTAPreview()">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Link URL *</label>
+          <input id="bf-url" class="form-control" value="${escUrl(b.url || '')}" placeholder="https://…" oninput="BKDN._updateCTAPreview()">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Subtitle <span style="color:#64748b;font-weight:400">(optional)</span></label>
+          <input id="bf-subtitle" class="form-control" value="${escHtml(b.subtitle || '')}" placeholder="Short description shown below button" oninput="BKDN._updateCTAPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <select id="bf-icon" class="form-control" onchange="BKDN._updateCTAPreview()">${iconOpts}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Style</label>
+          <select id="bf-style" class="form-control" onchange="BKDN._updateCTAPreview()">${styleOpts}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Starts At</label>
+          <input id="bf-start" type="datetime-local" class="form-control" value="${escHtml((b.start_at || '').replace(' ', 'T').slice(0, 16))}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ends At</label>
+          <input id="bf-end" type="datetime-local" class="form-control" value="${escHtml((b.end_at || '').replace(' ', 'T').slice(0, 16))}">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px">
+          <label class="toggle"><input id="bf-visible" type="checkbox" ${b.is_active !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
+          <span class="form-label" style="margin:0">Show on page</span>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px">
+          <label class="toggle"><input id="bf-enabled" type="checkbox" ${b.enabled !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
+          <span class="form-label" style="margin:0">Clickable</span>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px">
+          <label class="toggle"><input id="bf-new-tab" type="checkbox" ${b.opens_in_new_tab !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
+          <span class="form-label" style="margin:0">Open in new tab</span>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px">
+          <label class="toggle"><input id="bf-featured" type="checkbox" ${b.is_featured ? 'checked' : ''}><span class="toggle-slider"></span></label>
+          <span class="form-label" style="margin:0">Featured (highlight)</span>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Subtitle</label>
-        <input id="bf-subtitle" class="form-control" value="${escHtml(b.subtitle || '')}">
-      </div>
-      <div class="form-group" style="grid-column:1/-1">
-        <label class="form-label">URL</label>
-        <input id="bf-url" class="form-control" value="${escUrl(b.url || '')}" placeholder="https://…">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Icon</label>
-        <select id="bf-icon" class="form-control">${iconOpts}</select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Style Variant</label>
-        <select id="bf-style" class="form-control">${styleOpts}</select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Starts At</label>
-        <input id="bf-start" type="datetime-local" class="form-control" value="${escHtml((b.start_at || '').replace(' ', 'T').slice(0, 16))}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Ends At</label>
-        <input id="bf-end" type="datetime-local" class="form-control" value="${escHtml((b.end_at || '').replace(' ', 'T').slice(0, 16))}">
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-visible" type="checkbox" ${b.is_active !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
-        <span class="form-label" style="margin:0">Visible (show on page)</span>
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-enabled" type="checkbox" ${b.enabled !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
-        <span class="form-label" style="margin:0">Enabled (clickable)</span>
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-new-tab" type="checkbox" ${b.opens_in_new_tab !== 0 ? 'checked' : ''}><span class="toggle-slider"></span></label>
-        <span class="form-label" style="margin:0">Open in new tab</span>
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <label class="toggle"><input id="bf-featured" type="checkbox" ${b.is_featured ? 'checked' : ''}><span class="toggle-slider"></span></label>
-        <span class="form-label" style="margin:0">Featured (highlight)</span>
+      <div class="cta-preview-panel" style="background:#1e293b;border-radius:12px;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #334155">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:12px">Live Preview</div>
+        <div id="cta-preview-btn" style="width:100%;max-width:240px;padding:14px 20px;border-radius:10px;background:#ef4444;color:#fff;text-align:center;font-weight:600;font-size:14px;transition:all .2s">
+          ${escHtml(b.label || 'Button Text')}
+        </div>
+        <div id="cta-preview-subtitle" style="margin-top:6px;font-size:11px;color:#94a3b8">${escHtml(b.subtitle || '')}</div>
+        <div id="cta-preview-url" style="margin-top:10px;font-size:10px;color:#475569;word-break:break-all;max-width:240px;text-align:center">${escHtml(b.url || 'https://…')}</div>
       </div>
     </div>
   `;
+  }
+
+  function _updateCTAPreview() {
+    const label = document.getElementById('bf-label');
+    const url = document.getElementById('bf-url');
+    const subtitle = document.getElementById('bf-subtitle');
+    const style = document.getElementById('bf-style');
+    const previewBtn = document.getElementById('cta-preview-btn');
+    const previewSub = document.getElementById('cta-preview-subtitle');
+    const previewUrl = document.getElementById('cta-preview-url');
+    if (!previewBtn) return;
+    previewBtn.textContent = (label ? label.value : '') || 'Button Text';
+    if (previewSub) previewSub.textContent = subtitle ? subtitle.value : '';
+    if (previewUrl) previewUrl.textContent = (url ? url.value : '') || 'https://…';
+    // Style variant color mapping
+    const colors = { primary: '#ef4444', secondary: '#334155', outline: 'transparent', ghost: 'transparent', featured: '#f59e0b' };
+    const variant = style ? style.value : 'secondary';
+    previewBtn.style.background = colors[variant] || '#334155';
+    previewBtn.style.border = (variant === 'outline' || variant === 'ghost') ? '2px solid #ef4444' : 'none';
+    previewBtn.style.color = (variant === 'outline' || variant === 'ghost') ? '#ef4444' : '#fff';
   }
 
   function getButtonFormValues() {
@@ -1575,9 +1605,9 @@
   }
 
   function openAddButton() {
-    openModal('Add Button', buttonForm({ is_active: 1, enabled: 1, opens_in_new_tab: 1 }), `
+    openModal('Add CTA', buttonForm({ is_active: 1, enabled: 1, opens_in_new_tab: 1 }), `
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="BKDN.addButton()">Add Button</button>
+    <button class="btn btn-primary" onclick="BKDN.addButton()">Add CTA</button>
   `);
   }
 
@@ -1585,7 +1615,7 @@
     const vals = getButtonFormValues();
     console.log('BUTTON_PAYLOAD', vals);
     if (!vals.label || !vals.url) {
-      toast('Label and URL are required.', 'error');
+      toast('Button text and URL are required.', 'error');
       return;
     }
 
@@ -1610,7 +1640,7 @@
       state.currentButtons.push({ id: res.data.id, ...vals, enabled: 1, is_active: 1 });
       renderButtonList();
       closeModal();
-      toast('Button added!');
+      toast('CTA added successfully!');
     } else {
       toast(res?.data?.message || 'Failed to add button.', 'error');
     }
@@ -1619,9 +1649,9 @@
   function openEditButton(id) {
     const b = state.currentButtons.find(x => x.id === id);
     if (!b) return;
-    openModal('Edit Button', buttonForm(b), `
+    openModal('Edit CTA', buttonForm(b), `
     <button class="btn btn-ghost" onclick="BKDN.closeModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="BKDN.updateButton(${id})">Save Button</button>
+    <button class="btn btn-primary" onclick="BKDN.updateButton(${id})">Save CTA</button>
   `);
   }
 
@@ -1629,7 +1659,7 @@
     const vals = getButtonFormValues();
     console.log('BUTTON_PAYLOAD', vals);
     if (!vals.label || !vals.url) {
-      toast('Label and URL are required.', 'error');
+      toast('Button text and URL are required.', 'error');
       return;
     }
 
@@ -1639,7 +1669,7 @@
       if (idx !== -1) state.currentButtons[idx] = { ...state.currentButtons[idx], ...vals };
       renderButtonList();
       closeModal();
-      toast('Button saved!');
+      toast('CTA saved successfully!');
     } else {
       toast(res?.data?.message || 'Failed to update button.', 'error');
     }
@@ -2472,7 +2502,7 @@
     // Page editor
     savePage, saveTheme, resetTheme, togglePageActive, switchTab,
     // Buttons
-    openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton, toggleVisible, toggleFeatured,
+    openAddButton, addButton, openEditButton, updateButton, duplicateButton, deleteButton, toggleButton, toggleVisible, toggleFeatured, _updateCTAPreview,
     // Redirects
     openAddRedirect, addRedirect, deleteRedirect,
     // Analytics
