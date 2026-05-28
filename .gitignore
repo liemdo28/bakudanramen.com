@@ -39,3 +39,9 @@ data/*.db-wal
 uploads/
 *.db
 *.sqlite
+
+# Local server mirror — synced from production for reference, never commit or deploy
+bakudanramen.com/
+
+# macOS extended-attribute sidecar files
+._*
