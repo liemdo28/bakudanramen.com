@@ -17,379 +17,178 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000;
-  --card:#111;
-  --card-hover:#1a1a1a;
-  --border:rgba(255,255,255,0.08);
-  --red:#e11d2e;
-  --red-dark:#b91c1c;
-  --text:#fff;
-  --muted:#9ca3af;
-  --muted2:#9ca3af;
-  --r:14px;
+  --bg:#000;--card:#111;--card-hover:#1a1a1a;--border:rgba(255,255,255,0.08);
+  --red:#e11d2e;--red-dark:#b91c1c;--text:#fff;--muted:#9ca3af;--r:14px;
 }
 html{background:var(--bg)}
 body{
-  background:var(--bg);
-  color:var(--text);
+  background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-  -webkit-font-smoothing:antialiased;
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:48px 20px 64px;
+  -webkit-font-smoothing:antialiased;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:48px 20px 64px;
 }
 .wrap{width:100%;max-width:400px}
-
-/* ── Header ── */
 .hdr{text-align:center;margin-bottom:36px}
-.kanji{
-  width:82px;height:82px;
-  background:var(--red);
-  border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  margin:0 auto 18px;
-  font-size:42px;line-height:1;
-  box-shadow:0 0 48px rgba(224,28,28,.38);
-  overflow:hidden;
-}
+.kanji{width:82px;height:82px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:42px;line-height:1;box-shadow:0 0 48px rgba(224,28,28,.38);overflow:hidden}
 .kanji img{width:100%;height:100%;object-fit:cover;display:block}
-.brand-name{
-  font-size:20px;font-weight:800;
-  letter-spacing:.14em;text-transform:uppercase;
-}
+.brand-name{font-size:20px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 .divider{width:36px;height:2px;background:var(--red);margin:10px auto}
-.brand-sub{
-  font-size:11px;letter-spacing:.13em;
-  text-transform:uppercase;color:var(--muted2);
-}
-
-/* ── Links stack ── */
+.brand-sub{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.page-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+.page-tab{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;transition:background .15s,color .15s;letter-spacing:.02em}
+.page-tab.active{background:var(--red);color:#fff}
+.page-tab:not(.active){background:var(--card);border:1px solid var(--border);color:var(--muted)}
 .links{display:flex;flex-direction:column;gap:10px}
-
-/* ── Order Online CTA ── */
-.btn-order{
-  width:100%;border:none;cursor:pointer;
-  background:var(--red);
-  border-radius:var(--r);
-  padding:20px 20px 18px;
-  text-align:center;
-  color:#fff;
-  -webkit-tap-highlight-color:transparent;
-  transition:background .15s,transform .1s;
-  user-select:none;
-}
-.btn-order:active{transform:scale(.98);background:var(--red-dark)}
-.btn-order-title{font-size:18px;font-weight:700;margin-bottom:5px}
-.btn-order-sub{font-size:12px;opacity:.78;letter-spacing:.01em}
-
-/* ── Store picker ── */
-.store-picker{
-  display:none;flex-direction:column;gap:8px;
-  margin-top:8px;
-  animation:fd .2s ease;
-}
+.btn-primary{display:block;width:100%;border:none;cursor:pointer;background:var(--red);border-radius:var(--r);padding:20px 20px 18px;text-align:center;color:#fff;-webkit-tap-highlight-color:transparent;transition:background .15s,transform .1s;user-select:none;text-decoration:none}
+.btn-primary:active{transform:scale(.98);background:var(--red-dark)}
+.btn-primary-title{font-size:18px;font-weight:700;margin-bottom:5px}
+.btn-primary-sub{font-size:12px;opacity:.78;letter-spacing:.01em}
+.store-picker{display:none;flex-direction:column;gap:8px;margin-top:8px;animation:fd .2s ease}
 .store-picker.open{display:flex}
 @keyframes fd{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-
-.store-a{
-  display:flex;align-items:center;gap:14px;
-  padding:14px 16px;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:11px;
-  color:#fff;text-decoration:none;
-  transition:background .15s,border-color .15s;
-  -webkit-tap-highlight-color:transparent;
-}
+.store-a{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:11px;color:#fff;text-decoration:none;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
 .store-a:active,.store-a:hover{background:var(--card-hover);border-color:rgba(255,255,255,0.15)}
-.store-ico{
-  width:38px;height:38px;
-  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
-  border-radius:9px;
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;font-size:18px;
-}
+.store-ico{width:38px;height:38px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
 .store-name{font-size:14px;font-weight:700}
 .store-addr{font-size:11px;color:var(--muted);margin-top:2px}
-
-/* ── Dark link cards ── */
-.lnk{
-  display:flex;align-items:center;gap:14px;
-  padding:14px 16px;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  color:var(--text);text-decoration:none;
-  -webkit-tap-highlight-color:transparent;
-  transition:background .15s,border-color .15s;
-}
+.lnk{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);text-decoration:none;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}
 .lnk:active,.lnk:hover{background:var(--card-hover);border-color:rgba(255,255,255,0.15)}
-.ico{
-  width:42px;height:42px;border-radius:10px;
-  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
-}
+.ico{width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .lnk-body{flex:1}
 .lnk-title{font-size:15px;font-weight:600}
-.lnk-sub{font-size:12px;color:var(--muted2);margin-top:2px}
-
-/* ── Section label ── */
-.sec-lbl{
-  font-size:10px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--muted);
-  padding:4px 2px 0;margin-top:4px;
-}
-
-/* ── Coming soon ── */
-.coming-soon{
-  padding:15px;
-  border:1px dashed var(--border);
-  border-radius:var(--r);
-  text-align:center;
-  font-size:13px;color:var(--muted);
-}
-
-/* ── Focus (keyboard accessibility) ── */
-.btn-order:focus-visible,
-.store-a:focus-visible,
-.lnk:focus-visible{
-  outline:2px solid var(--red);
-  outline-offset:3px;
-}
-
-/* ── Footer ── */
+.lnk-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.sec-lbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:4px 2px 0;margin-top:4px}
+.links-loading{display:flex;justify-content:center;align-items:center;padding:48px 0}
+.links-spinner{width:28px;height:28px;border:2px solid rgba(255,255,255,0.1);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.links-err,.links-empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:14px;line-height:1.6}
+.btn-retry{margin-top:12px;padding:8px 20px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-primary:focus-visible,.store-a:focus-visible,.lnk:focus-visible,.page-tab:focus-visible{outline:2px solid var(--red);outline-offset:3px}
 footer{margin-top:48px;text-align:center;font-size:12px;color:var(--muted);line-height:1.8}
 footer a{color:var(--muted);text-decoration:none}
 </style>
 </head>
 <body>
 <div class="wrap">
-
   <div class="hdr">
     <div class="kanji">
-      <img src="/images/garlic-tonkotsu.png" alt="Bakudan Ramen" onerror="this.style.display='none';this.parentNode.textContent='爆'">
+      <img src="/images/garlic-tonkotsu.png" alt="Bakudan Ramen"
+           onerror="this.style.display='none';this.parentNode.textContent='爆'">
     </div>
     <div class="brand-name">Bakudan Ramen</div>
     <div class="divider"></div>
-    <div class="brand-sub">Authentic Japanese Ramen &middot; San Antonio</div>
+    <div id="brand-sub" class="brand-sub">Authentic Japanese Ramen &middot; San Antonio</div>
   </div>
-
-  <div class="links">
-
-    <!-- ORDER ONLINE -->
-    <div>
-      <button class="btn-order" onclick="toggleOrder(this)" aria-expanded="false">
-        <div class="btn-order-title">Order Online</div>
-        <div class="btn-order-sub">Pickup &middot; Delivery &middot; Catering &mdash; tap to choose location</div>
-      </button>
-      <div class="store-picker" id="store-picker">
-        <a class="store-a" href="https://order.toasttab.com/online/bakudanramen" data-config-link="locations.the-rim.toast_order_url" target="_blank" rel="noopener noreferrer" onclick="track('order-rim')">
-          <div class="store-ico">🏮</div>
-          <div>
-            <div class="store-name">The Rim</div>
-            <div class="store-addr">17619 La Cantera Pkwy #208</div>
-          </div>
-        </a>
-        <a class="store-a" href="https://order.toasttab.com/online/bakudan-ramen-stone-oak" data-config-link="locations.stone-oak.toast_order_url" target="_blank" rel="noopener noreferrer" onclick="track('order-stoneoak')">
-          <div class="store-ico">🏮</div>
-          <div>
-            <div class="store-name">Stone Oak</div>
-            <div class="store-addr">22506 US Hwy 281 N #106</div>
-          </div>
-        </a>
-        <a class="store-a" href="https://order.toasttab.com/online/bakudan-bandera" data-config-link="locations.bandera.toast_order_url" target="_blank" rel="noopener noreferrer" onclick="track('order-bandera')">
-          <div class="store-ico">🏮</div>
-          <div>
-            <div class="store-name">Bandera</div>
-            <div class="store-addr">11309 Bandera Rd #111</div>
-          </div>
-        </a>
+  <div id="page-tabs" style="display:none"></div>
+  <div id="links-root">
+    <div id="links-loading" class="links-loading"><div class="links-spinner"></div></div>
+    <div id="links-content" class="links" style="display:none"></div>
+    <div id="links-error" style="display:none">
+      <div class="links-err">Could not load links.<br>
+        <button class="btn-retry" onclick="window.location.reload()">Retry</button>
       </div>
     </div>
-
-    <!-- MAIN WEBSITE -->
-    <a class="lnk" href="https://www.bakudanramen.com/" target="_blank" rel="noopener noreferrer" onclick="track('website')">
-      <div class="ico">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Visit Main Website</div>
-        <div class="lnk-sub">Menu, locations, story</div>
-      </div>
-    </a>
-
-    <!-- INSTAGRAM -->
-    <a class="lnk" href="https://www.instagram.com/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('instagram')">
-      <div class="ico">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Instagram</div>
-        <div class="lnk-sub">@bakudanramen</div>
-      </div>
-    </a>
-
-    <!-- FACEBOOK -->
-    <a class="lnk" href="https://www.facebook.com/bakudanramen" target="_blank" rel="noopener noreferrer" onclick="track('facebook')">
-      <div class="ico">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Facebook</div>
-        <div class="lnk-sub">Bakudan Ramen</div>
-      </div>
-    </a>
-
-    <!-- LOCATIONS -->
-    <div class="sec-lbl">Locations &amp; Directions</div>
-
-    <a class="lnk" href="https://maps.google.com/?q=17619+La+Cantera+Pkwy+%23208,+San+Antonio,+TX+78257" target="_blank" rel="noopener noreferrer" onclick="track('loc-rim')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">The Rim</div>
-        <div class="lnk-sub">17619 La Cantera Pkwy #208 &middot; Get Directions</div>
-      </div>
-    </a>
-
-    <a class="lnk" href="https://maps.google.com/?q=22506+US-281+%23106,+San+Antonio,+TX+78258" target="_blank" rel="noopener noreferrer" onclick="track('loc-stoneoak')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Stone Oak</div>
-        <div class="lnk-sub">22506 US Hwy 281 N #106 &middot; Get Directions</div>
-      </div>
-    </a>
-
-    <a class="lnk" href="https://maps.google.com/?q=11309+Bandera+Rd+%23111,+San+Antonio,+TX+78250" target="_blank" rel="noopener noreferrer" onclick="track('loc-bandera')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Bandera</div>
-        <div class="lnk-sub">11309 Bandera Rd #111 &middot; Get Directions</div>
-      </div>
-    </a>
-
-    <!-- REWARDS & LOYALTY -->
-    <div class="sec-lbl">Rewards &amp; Loyalty</div>
-
-    <a class="lnk" href="https://www.toasttab.com/bakudan-bandera/rewardsSignup" target="_blank" rel="noopener noreferrer" onclick="track('rewards-bandera')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 12 20 22 4 22 4 12"/>
-          <rect x="2" y="7" width="20" height="5"/>
-          <line x1="12" y1="22" x2="12" y2="7"/>
-          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
-          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Bandera Rewards</div>
-        <div class="lnk-sub">Earn rewards at Bandera location</div>
-      </div>
-    </a>
-
-    <a class="lnk" href="https://www.toasttab.com/bakudan-ramen-stone-oak/rewardssignup" target="_blank" rel="noopener noreferrer" onclick="track('rewards-stoneoak')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 12 20 22 4 22 4 12"/>
-          <rect x="2" y="7" width="20" height="5"/>
-          <line x1="12" y1="22" x2="12" y2="7"/>
-          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
-          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Stone Oak Rewards</div>
-        <div class="lnk-sub">Earn rewards at Stone Oak location</div>
-      </div>
-    </a>
-
-    <!-- WAITLIST -->
-    <div class="sec-lbl">Join Waitlist</div>
-
-    <a class="lnk" href="https://waitlist.me/multiplace-analytics?place_id=12052320465&utm_source=website&utm_medium=links-page&utm_campaign=waitlist&utm_content=the-rim" target="_blank" rel="noopener noreferrer" onclick="track('waitlist-rim')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">The Rim — Join Waitlist</div>
-        <div class="lnk-sub">17619 La Cantera Pkwy #208</div>
-      </div>
-    </a>
-
-    <a class="lnk" href="https://waitlist.me/multiplace-analytics?place_id=13145581824&utm_source=website&utm_medium=links-page&utm_campaign=waitlist&utm_content=stone-oak" target="_blank" rel="noopener noreferrer" onclick="track('waitlist-stoneoak')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Stone Oak — Join Waitlist</div>
-        <div class="lnk-sub">22506 US Hwy 281 N #106</div>
-      </div>
-    </a>
-
-    <a class="lnk" href="https://waitlist.me/multiplace-analytics?place_id=13718440405&utm_source=website&utm_medium=links-page&utm_campaign=waitlist&utm_content=bandera" target="_blank" rel="noopener noreferrer" onclick="track('waitlist-bandera')">
-      <div class="ico">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-      </div>
-      <div class="lnk-body">
-        <div class="lnk-title">Bandera — Join Waitlist</div>
-        <div class="lnk-sub">11309 Bandera Rd #111</div>
-      </div>
-    </a>
-
-    <!-- COMING SOON -->
-    <div class="coming-soon">Merchandise &middot; Coming Soon</div>
-
   </div>
-
   <footer>
     <p>&copy; 2026 Bakudan Ramen</p>
     <p><a href="https://www.bakudanramen.com">bakudanramen.com</a></p>
   </footer>
-
 </div>
-
 <script>
-function toggleOrder(btn) {
-  var p = document.getElementById('store-picker');
-  var open = p.classList.toggle('open');
-  btn.setAttribute('aria-expanded', String(open));
+(function(){
+'use strict';
+var API='/api/public';
+var _pages=[];var _cfg={};
+var ICONS={
+  order:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
+  website:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+  instagram:'<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>',
+  facebook:'<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
+  directions:'<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+  phone:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 10a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.72a16 16 0 0 0 5.37 5.37l.95-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  email:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  menu:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  gift:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+  ticket:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>',
+  events:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  blog:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  social:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+  external:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+};
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function cfgGet(o,p){return p.split('.').reduce(function(a,k){return(a!=null&&Object.prototype.hasOwnProperty.call(a,k))?a[k]:null},o)}
+function getSlug(){var m=window.location.pathname.match(/\/links\/([^/?#]+)/);return m?m[1]:null}
+function track(pid,bid){fetch(API+'/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page_id:pid,button_id:bid,event_type:'click'})}).catch(function(){})}
+window._track=track;
+window._togglePicker=function(id,btn){var p=document.getElementById(id);if(!p)return;var o=p.classList.toggle('open');btn.setAttribute('aria-expanded',String(o))};
+function renderOrderPicker(btn,page,locPages){
+  var id='sp-'+btn.id;
+  var entries=locPages.map(function(lp){
+    var url=cfgGet(_cfg,'locations.'+lp.store_slug+'.toast_order_url')||'#';
+    var addr=cfgGet(_cfg,'locations.'+lp.store_slug+'.address_line_1')||'';
+    return '<a class="store-a" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer" onclick="window._track('+page.id+','+btn.id+')">'+'<div class="store-ico">🏮</div>'+'<div><div class="store-name">'+esc(lp.title)+'</div>'+(addr?'<div class="store-addr">'+esc(addr)+'</div>':'')+'</div></a>';
+  }).join('');
+  return '<div><button class="btn-primary" onclick="window._togglePicker(\''+id+'\',this)" aria-expanded="false"><div class="btn-primary-title">'+esc(btn.label)+'</div>'+(btn.subtitle?'<div class="btn-primary-sub">'+esc(btn.subtitle)+'</div>':'')+'</button><div class="store-picker" id="'+esc(id)+'">'+entries+'</div></div>';
 }
-
-function track(label) {
-  fetch('/api/public/track', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({button_id: label, event_type: 'click'}),
-  }).catch(function(){});
+function renderBtn(btn,page){
+  if(btn.style_variant==='label')return'<div class="sec-lbl">'+esc(btn.label)+'</div>';
+  var isPri=btn.style_variant==='primary'||btn.is_featured;
+  var tgt=btn.opens_in_new_tab!==0?'target="_blank" rel="noopener noreferrer"':'';
+  var trk='onclick="window._track('+page.id+','+btn.id+')"';
+  var icon=ICONS[btn.icon_key]||ICONS.external;
+  if(btn.icon_key==='order'&&!page.store_slug){
+    var locs=_pages.filter(function(p){return p.store_slug});
+    if(locs.length>0)return renderOrderPicker(btn,page,locs);
+  }
+  if(isPri)return'<a class="btn-primary" href="'+esc(btn.url)+'" '+tgt+' '+trk+'><div class="btn-primary-title">'+esc(btn.label)+'</div>'+(btn.subtitle?'<div class="btn-primary-sub">'+esc(btn.subtitle)+'</div>':'')+'</a>';
+  return'<a class="lnk" href="'+esc(btn.url)+'" '+tgt+' '+trk+'><div class="ico">'+icon+'</div><div class="lnk-body"><div class="lnk-title">'+esc(btn.label)+'</div>'+(btn.subtitle?'<div class="lnk-sub">'+esc(btn.subtitle)+'</div>':'')+'</div></a>';
 }
+function renderTabs(cur){
+  var el=document.getElementById('page-tabs');
+  if(_pages.length<2){el.style.display='none';return}
+  el.style.display='flex';
+  el.innerHTML=_pages.map(function(p){var href=p.store_slug?'/links/'+p.slug:'/links';var act=p.id===cur.id?' active':'';return'<a class="page-tab'+act+'" href="'+esc(href)+'">'+esc(p.title)+'</a>'}).join('');
+}
+function render(page,buttons){
+  if(page.headline)document.getElementById('brand-sub').textContent=page.headline;
+  renderTabs(page);
+  var html=buttons.map(function(b){return renderBtn(b,page)}).join('');
+  if(!html)html='<div class="links-empty">No links configured yet.</div>';
+  var c=document.getElementById('links-content');
+  c.innerHTML=html;c.style.display='flex';
+  document.getElementById('links-loading').style.display='none';
+}
+async function init(){
+  var slug=getSlug();
+  try{
+    var cfgRes=await fetch(API+'/site-config').catch(function(){return{ok:false}});
+    _cfg=cfgRes.ok?(await cfgRes.json()).data||{}:{};
+    var pr=await fetch(API+'/pages/all');
+    if(!pr.ok)throw new Error('pages/all '+pr.status);
+    _pages=((await pr.json()).data||{}).pages||[];
+    var target=slug||((_pages.find(function(p){return!p.store_slug})||_pages[0]||{}).slug);
+    if(!target){
+      document.getElementById('links-loading').style.display='none';
+      var c=document.getElementById('links-content');
+      c.innerHTML='<div class="links-empty">Links coming soon.</div>';c.style.display='flex';return;
+    }
+    var pgRes=await fetch(API+'/pages/'+encodeURIComponent(target));
+    if(pgRes.status===404){
+      document.getElementById('links-loading').style.display='none';
+      var c2=document.getElementById('links-content');
+      c2.innerHTML='<div class="links-empty">Page not found. <a href="/links" style="color:var(--red)">View all links</a></div>';c2.style.display='flex';return;
+    }
+    if(!pgRes.ok)throw new Error('pages/slug '+pgRes.status);
+    var d=(await pgRes.json()).data;
+    render(d.page,d.buttons);
+  }catch(e){
+    console.error('[links]',e);
+    document.getElementById('links-loading').style.display='none';
+    document.getElementById('links-error').style.display='block';
+  }
+}
+init();
+})();
 </script>
-<script src="/js/site-config.js" defer></script>
 </body>
 </html>
