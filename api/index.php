@@ -710,7 +710,21 @@ if ($path === '/sitemap.xml' && $METHOD === 'GET') {
     exit;
 }
 
+// ── OPS stub — Operations module runs on Node.js only ────────────────
+// Return a clean JSON response instead of falling through to Apache 404,
+// which was triggering Cloudflare rate limiting during admin testing.
+if (preg_match('#^/ops#', $path)) {
+    err('Operations module not available in this environment.', 503);
+}
+
 // ── PUBLIC ────────────────────────────────────────────────────────────
+if ($path === '/public/site-config' && $METHOD === 'GET') {
+    $configPath = __DIR__ . '/../data/site-config.json';
+    if (!file_exists($configPath)) err('Config unavailable.', 500);
+    $config = json_decode(file_get_contents($configPath), true);
+    header('Cache-Control: public, max-age=60, stale-while-revalidate=300');
+    ok($config ?: []);
+}
 if ($path === '/public/pages/all' && $METHOD === 'GET') {
     ok(['pages' => q("SELECT id, title, slug, headline, store_slug FROM pages WHERE is_active=1 ORDER BY sort_order ASC, id ASC")]);
 }
