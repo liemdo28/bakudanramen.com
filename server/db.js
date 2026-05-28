@@ -127,9 +127,86 @@ try {
   db.exec(`ALTER TABLE buttons ADD COLUMN opens_in_new_tab INTEGER NOT NULL DEFAULT 1`);
   console.log('[db] Migration: added opens_in_new_tab column to buttons table');
 } catch (e) {
-  // Column may already exist — ignore duplicate column errors
   if (!e.message.includes('duplicate column')) {
     console.warn('[db] Migration warning:', e.message);
+  }
+}
+
+// Migration: revisions table for publish workflow & rollback
+db.exec(`
+CREATE TABLE IF NOT EXISTS revisions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_type TEXT    NOT NULL,
+  entity_id   INTEGER NOT NULL,
+  action      TEXT    NOT NULL DEFAULT 'update',
+  snapshot    TEXT    NOT NULL,
+  user_id     INTEGER REFERENCES users(id),
+  user_name   TEXT,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_revisions_entity ON revisions(entity_type, entity_id);
+`);
+
+// Migration: safe rebuild snapshots and isolated draft workspaces
+db.exec(`
+CREATE TABLE IF NOT EXISTS link_page_snapshots (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id     INTEGER,
+  page_slug   TEXT,
+  page_title  TEXT,
+  action      TEXT    NOT NULL,
+  label       TEXT,
+  snapshot    TEXT    NOT NULL,
+  user_id     INTEGER REFERENCES users(id),
+  user_name   TEXT,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_link_page_snapshots_page
+  ON link_page_snapshots(page_id, created_at);
+
+CREATE TABLE IF NOT EXISTS link_page_rebuild_drafts (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id     INTEGER NOT NULL,
+  status      TEXT    NOT NULL DEFAULT 'active',
+  label       TEXT,
+  template_id TEXT,
+  snapshot    TEXT    NOT NULL,
+  created_by  INTEGER REFERENCES users(id),
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_link_page_rebuild_drafts_page
+  ON link_page_rebuild_drafts(page_id, status, updated_at);
+`);
+
+// Migration: media library table
+db.exec(`
+CREATE TABLE IF NOT EXISTS media (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  filename    TEXT    NOT NULL,
+  original_name TEXT,
+  mime_type   TEXT,
+  size_bytes  INTEGER NOT NULL DEFAULT 0,
+  alt_text    TEXT,
+  folder      TEXT    DEFAULT 'general',
+  url         TEXT    NOT NULL,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
+// Migration: add subtitle, style_variant, icon_key columns to buttons if missing
+const buttonMigrations = [
+  ['subtitle', 'TEXT'],
+  ['style_variant', "TEXT DEFAULT 'secondary'"],
+  ['icon_key', 'TEXT'],
+];
+for (const [col, type] of buttonMigrations) {
+  try {
+    db.exec(`ALTER TABLE buttons ADD COLUMN ${col} ${type}`);
+    console.log(`[db] Migration: added ${col} to buttons`);
+  } catch (e) {
+    if (!e.message.includes('duplicate column')) console.warn('[db] Migration:', e.message);
   }
 }
 

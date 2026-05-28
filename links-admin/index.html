@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Links Hub — Admin</title>
-  <link rel="stylesheet" href="assets/app.css?v=20260528-2">
+  <link rel="stylesheet" href="assets/app.css?v=20260528-3">
+  <link rel="stylesheet" href="assets/operations.css?v=20260528-4">
 </head>
 
 <body class="bkdn-spa">
@@ -49,10 +50,11 @@
   </script>
 
   <script>
+    var BKDN_IS_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
     window.BKDN_CONFIG = {
-      rest: "https://www.bakudanramen.com/api",
-      siteUrl: "https://www.bakudanramen.com",
-      version: "2026.05.28-2",
+      rest: BKDN_IS_LOCAL ? window.location.origin + "/api" : "https://www.bakudanramen.com/api",
+      siteUrl: BKDN_IS_LOCAL ? window.location.origin : "https://www.bakudanramen.com",
+      version: "2026.05.28-3",
       iconKeys: ["order", "website", "email", "events", "instagram", "facebook", "directions", "phone", "menu", "gift", "ticket", "external", "blog", "social"],
       project: {
         key: "bakudan-links",
@@ -83,8 +85,9 @@
       }
     };
   </script>
-  <script src="assets/app.js?v=20260528-2"></script>
-  <script src="assets/blog-extension.js?v=20260528-2"></script>
+  <script src="assets/app.js?v=20260528-3"></script>
+  <script src="assets/blog-extension.js?v=20260528-3"></script>
+  <script src="assets/operations.js?v=20260528-4"></script>
 </body>
 
 </html>
